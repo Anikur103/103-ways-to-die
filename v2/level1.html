@@ -84,7 +84,7 @@ const SPAWN={x:30,y:180};
 
 /* --- Player: small pixel WISP (own character, not a devil) --- */
 const P={x:SPAWN.x,y:SPAWN.y,w:12,h:18,vx:0,vy:0,ground:false,face:1,dead:false,win:false};
-let deaths=0,cam=0,shake=0,clearT=0,absorb=0;
+let deaths=0,cam=0,shake=0,clearT=0,absorb=0,doorClose=0;
 
 function doJump(){if(P.ground&&!P.dead&&!P.win){P.vy=-8.2;P.ground=false;}}
 function showMsg(t,ms){const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;clearTimeout(m._t);m._t=setTimeout(()=>m.style.opacity=0,ms||1500);}
@@ -96,14 +96,16 @@ function die(){
   shake=6;
   setTimeout(()=>{P.x=SPAWN.x;P.y=SPAWN.y;P.vx=0;P.vy=0;P.dead=false;},450);
 }
-function reset(){P.x=SPAWN.x;P.y=SPAWN.y;P.vx=0;P.vy=0;P.dead=false;P.win=false;cam=0;absorb=0;}
+function reset(){P.x=SPAWN.x;P.y=SPAWN.y;P.vx=0;P.vy=0;P.dead=false;P.win=false;cam=0;absorb=0;doorClose=0;}
 
 function update(){
   if(P.win){
     clearT++;
     // absorb animation: player shrinks into portal
     if(absorb<1)absorb=Math.min(1,absorb+0.04);
-    if(clearT===40)showMsg('★ CLEAR ★',1800);
+    // door closes behind the player
+    if(absorb>=1&&doorClose<1)doorClose=Math.min(1,doorClose+0.06);
+    if(clearT===60)showMsg('★ CLEAR ★',1800);
     return;
   }
   const SP=2.4;
@@ -173,15 +175,18 @@ function draw(){
   }
 
   // GOAL: mysterious dark portal — NO label, NO hint (deception is the game)
+  // doorClose: 0=open, 1=shut (closes behind player)
   const gl=0.6+0.4*Math.sin(Date.now()*0.006);
+  const dc=doorClose;
+  const gcx=GOAL.x+GOAL.w/2, gw2=(GOAL.w/2)*(1-dc);
   // subtle outer glow (barely visible)
-  cx.fillStyle='rgba(120,80,220,'+(0.12*gl)+')';cx.fillRect(GOAL.x-8,GOAL.y-8,GOAL.w+16,GOAL.h+16);
-  // dark void
-  cx.fillStyle='#05060a';cx.fillRect(GOAL.x,GOAL.y,GOAL.w,GOAL.h);
+  if(dc<1){cx.fillStyle='rgba(120,80,220,'+(0.12*gl*(1-dc))+')';cx.fillRect(GOAL.x-8,GOAL.y-8,GOAL.w+16,GOAL.h+16);}
+  // dark void (shrinks as door closes)
+  cx.fillStyle='#05060a';cx.fillRect(gcx-gw2,GOAL.y,gw2*2,GOAL.h);
   // faint purple inner shimmer
-  cx.fillStyle='rgba(150,100,255,'+(0.25+0.2*gl)+')';
-  cx.fillRect(GOAL.x+GOAL.w/2-2,GOAL.y+6,4,GOAL.h-12);
-  // thin frame
+  if(dc<1){cx.fillStyle='rgba(150,100,255,'+((0.25+0.2*gl)*(1-dc))+')';
+  cx.fillRect(gcx-2*(1-dc),GOAL.y+6,4*(1-dc),GOAL.h-12);}
+  // thin frame (frame stays, void closes)
   cx.fillStyle='#2a2438';cx.fillRect(GOAL.x,GOAL.y,GOAL.w,2);cx.fillRect(GOAL.x,GOAL.y+GOAL.h-2,GOAL.w,2);
   cx.fillRect(GOAL.x,GOAL.y,2,GOAL.h);cx.fillRect(GOAL.x+GOAL.w-2,GOAL.y,2,GOAL.h);
 
@@ -208,14 +213,14 @@ function draw(){
     cx.restore();
   }
 
-  // Win sparkles
-  if(P.win&&absorb>=1){
+  // Win sparkles (after door fully shut)
+  if(P.win&&doorClose>=1){
     cx.fillStyle='#9a6bff';
     for(let i=0;i<12;i++){
       const a=Date.now()*0.004+i*0.5;
       cx.fillRect(GOAL.x+GOAL.w/2+Math.cos(a)*20*gl-1,GOAL.y+20+Math.sin(a)*20*gl-1,2,2);
     }
-    if(clearT>140){cx.fillStyle='#e8f0ff';cx.font='bold 14px monospace';cx.textAlign='center';cx.fillText('Level 2 → soon',cam+240,140);}
+    if(clearT>160){cx.fillStyle='#e8f0ff';cx.font='bold 14px monospace';cx.textAlign='center';cx.fillText('Level 2 → soon',cam+240,140);}
   }
 
   cx.restore();
