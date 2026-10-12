@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>103 Ways to Die</title>
 <style>
-html,body{margin:0;padding:0;background:#0b0e17;height:100%;overflow:hidden;
+html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden;
 font-family:'Courier New',monospace;-webkit-user-select:none;user-select:none;touch-action:none}
 #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
 canvas{display:block;image-rendering:pixelated}
@@ -181,23 +181,20 @@ if(Math.abs(pcx-(t.x+10))<16&&Math.abs((g.py+13)-(t.y+10))<22)die();}
 // ---------- render ----------
 function draw(){
 cx.save();cx.scale(S,S);
-cx.fillStyle='#0b0e17';cx.fillRect(0,0,W,H);
+cx.fillStyle='#000';cx.fillRect(0,0,W,H);
 if(mode==='menu'){menu();cx.restore();return;}
 const g=G;
 // bg grid
-cx.fillStyle='rgba(120,160,220,.045)';
-for(let x=0;x<W;x+=24)cx.fillRect(x,0,1,H);
-for(let y=0;y<H;y+=24)cx.fillRect(0,y,W,1);
+// no grid - pure black like Level Devil
 if(g.shake>0.3)cx.translate((Math.random()-.5)*g.shake,(Math.random()-.5)*g.shake);
 // platforms (visually merged for invisible pits)
 const vp=mergePlats(g);
 for(const p of vp){
-cx.fillStyle='#232c44';cx.fillRect(p.x,p.y,p.w,p.h);
-cx.fillStyle='#3ddc84';cx.fillRect(p.x,p.y,p.w,3);
+cx.fillStyle='#e8e8e8';cx.fillRect(p.x,p.y,p.w,p.h);
 if(p.warn){cx.fillStyle='rgba(255,180,60,.5)';cx.fillRect(p.x,p.y,p.w,p.h);}}
 // spikes
 for(const t of g.ts){if(t.t!=='spike'||!t.active||t.timer>0)continue;
-cx.fillStyle='#c0392b';
+cx.fillStyle='#ff0000';
 for(let s=0;s<t.w/10;s++){const sx=t.x+s*10;
 cx.beginPath();cx.moveTo(sx,t.y);cx.lineTo(sx+5,t.y-22);cx.lineTo(sx+10,t.y);cx.fill();}}
 // drops
@@ -212,28 +209,20 @@ cx.fillStyle='#c8c8d0';
 for(let i=0;i<8;i++){cx.rotate(Math.PI/4);
 cx.beginPath();cx.moveTo(0,0);cx.lineTo(15,-4);cx.lineTo(15,4);cx.fill();}
 cx.fillStyle='#e74c3c';cx.beginPath();cx.arc(0,0,5,0,7);cx.fill();cx.restore();}
-// portal (mysterious, no text)
-const gl=g.d.g,pl=0.7+0.3*Math.sin(g.fr/18);
-cx.fillStyle='rgba(155,89,182,'+(0.22*pl)+')';
-cx.beginPath();cx.arc(gl.x+10,gl.y+10,17,0,7);cx.fill();
-cx.fillStyle='rgba(200,140,230,'+(0.85*pl)+')';
-cx.beginPath();cx.arc(gl.x+10,gl.y+10,9,0,7);cx.fill();
-cx.fillStyle='rgba(240,200,255,'+(0.9*pl)+')';
-cx.beginPath();cx.arc(gl.x+10,gl.y+10,4,0,7);cx.fill();
-// fake portals (identical look!)
+// door exit (Level Devil style)
+const gl=g.d.g;
+cx.fillStyle='#8a6a3a';cx.fillRect(gl.x,gl.y-6,20,46);
+cx.fillStyle='#5a4020';cx.fillRect(gl.x+3,gl.y-3,14,40);
+cx.fillStyle='#c8a850';cx.fillRect(gl.x+14,gl.y+14,3,3);
+// fake doors (identical!)
 for(const t of g.ts){if(t.t!=='fake')continue;
-cx.fillStyle='rgba(155,89,182,'+(0.22*pl)+')';
-cx.beginPath();cx.arc(t.x+10,t.y+10,17,0,7);cx.fill();
-cx.fillStyle='rgba(200,140,230,'+(0.85*pl)+')';
-cx.beginPath();cx.arc(t.x+10,t.y+10,9,0,7);cx.fill();}
+cx.fillStyle='#8a6a3a';cx.fillRect(t.x,t.y-6,20,46);
+cx.fillStyle='#5a4020';cx.fillRect(t.x+3,t.y-3,14,40);}
 // player: WISP
 const px=g.px,py=g.py,bob=Math.sin(g.fr/9)*1.5;
 if(!g.dead){
-cx.fillStyle='rgba(57,208,216,.3)';
-cx.fillRect(px-2,py+4+bob,4,14);cx.fillRect(px+16,py+4-bob,4,14);
-cx.fillStyle='#39d0d8';cx.fillRect(px+2,py+2+bob*0.4,14,20);
-cx.fillStyle='#0b0e17';cx.fillRect(px+5,py+7+bob*0.4,3,5);cx.fillRect(px+10,py+7+bob*0.4,3,5);
-cx.fillStyle='#7df9ff';cx.fillRect(px+5,py+7+bob*0.4,3,2);cx.fillRect(px+10,py+7+bob*0.4,3,2);
+cx.fillStyle='#fff';cx.fillRect(px+2,py+2,14,20);
+cx.fillStyle='#000';cx.fillRect(px+5,py+8,3,4);cx.fillRect(px+10,py+8,3,4);
 }
 if(g.win){cx.fillStyle='rgba(255,255,255,.45)';cx.fillRect(0,0,W,H);}
 cx.restore();
@@ -257,9 +246,9 @@ return out;
 }
 function menu(){
 cx.textAlign='center';
-cx.fillStyle='#e8eefc';cx.font='bold 40px Courier New';
+cx.fillStyle='#fff';cx.font='bold 40px Courier New';
 cx.fillText('103 WAYS TO DIE',W/2,58);
-cx.fillStyle='#c0392b';cx.font='bold 15px Courier New';
+cx.fillStyle='#ff0000';cx.font='bold 15px Courier New';
 cx.fillText('TRUST NOTHING',W/2,84);
 const per=13,bw=30,bh=24;
 const gx=(W-per*(bw+5))/2;let y=110;
