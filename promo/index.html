@@ -66,6 +66,7 @@
   .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
   .feat{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 24px;transition:.2s}
   .feat:hover{border-color:var(--red2);transform:translateY(-4px)}
+  .feat .ico{font-size:34px;margin-bottom:14px}
   .feat h3{font-size:18px;margin-bottom:10px}
   .feat p{color:var(--muted);font-size:14.5px;line-height:1.6}
 
@@ -186,9 +187,11 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// register service worker (makes the page installable as an app)
+// register service workers (promo + root). The root worker's scope covers the
+// manifest start_url, which is what Chrome checks for installability.
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(function(){});
+  navigator.serviceWorker.register('../sw.js').catch(function(){});
 }
 // floating spikes
 (function(){
