@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>103 Ways to Die</title>
+<!-- v2.0: unified 103-level deception platformer -->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#0b0f1a;overflow:hidden;font-family:'Courier New',monospace;touch-action:none;user-select:none;-webkit-user-select:none}
+  #game{display:block;width:100vw;height:100vh;image-rendering:pixelated;image-rendering:crisp-edges}
+  .hud{position:fixed;top:0;left:0;right:0;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;z-index:10;pointer-events:none}
+  .hud span{color:#e8f0ff;font-weight:bold;font-size:14px;letter-spacing:1px}
+  .hud .right{display:flex;align-items:center;gap:10px;pointer-events:auto}
+  #musicBtn{width:34px;height:34px;border-radius:6px;border:2px solid #3ddc84;background:rgba(61,220,132,.12);color:#3ddc84;font-size:15px;cursor:pointer}
+  .controls{position:fixed;bottom:18px;left:0;right:0;display:flex;justify-content:space-between;padding:0 18px;z-index:10}
+  .btn{width:64px;height:64px;border-radius:6px;border:3px solid #e8f0ff;background:rgba(232,240,255,.08);color:#e8f0ff;font-size:22px;display:flex;align-items:center;justify-content:center;font-weight:bold}
+  .btn:active{background:rgba(232,240,255,.25)}
+  .btn.jump{width:84px;height:84px;background:rgba(61,220,132,.12);border-color:#3ddc84;color:#3ddc84;font-size:14px}
+  #deathFlash{position:fixed;inset:0;background:#ff2d55;opacity:0;pointer-events:none;z-index:15;transition:opacity .1s}
+  #menu{position:fixed;inset:0;background:#0b0f1a;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+  #menu h1{color:#e8f0ff;font-size:26px;letter-spacing:3px}
+  #menu h1 .r{color:#ff2d55}
+  #menu .sub{color:#5a6a8a;font-size:12px;letter-spacing:2px}
+  #levelGrid{display:grid;grid-template-columns:repeat(10,34px);gap:6px;max-height:40vh;overflow-y:auto;padding:10px}
+  .lvbtn{width:34px;height:34px;border-radius:4px;border:1px solid #2a3550;background:#141b2e;color:#5a6a8a;font-size:11px;font-family:'Courier New',monospace;cursor:pointer}
+  .lvbtn.open{border-color:#3ddc84;color:#3ddc84}
+  .lvbtn.done{background:#1a2e1f;color:#3ddc84}
+  #playBtn{padding:12px 48px;font-size:16px;font-family:'Courier New',monospace;font-weight:bold;letter-spacing:2px;color:#0b0f1a;background:#3ddc84;border:none;border-radius:6px;cursor:pointer}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div class="hud" id="hud" style="display:none"><span id="lvLabel">LV 001</span><div class="right"><span id="deaths">☠ 0</span><button id="musicBtn">♪</button></div></div>
+<div class="controls" id="controls" style="display:none">
+  <div style="display:flex;gap:12px"><div class="btn" id="btnL">◀</div><div class="btn" id="btnR">▶</div></div>
+  <div class="btn jump" id="btnJ">JUMP</div>
+</div>
+<div id="deathFlash"></div>
+<div id="menu">
+  <h1>103 <span class="r">WAYS</span> TO DIE</h1>
+  <div class="sub">TRUST NOTHING</div>
+  <div id="levelGrid"></div>
+  <button id="playBtn">PLAY</button>
+</div>
+<script>
+"use strict";
+/* ===== 103 Ways to Die V2 — unified deception platformer ===== */
+const cv=document.getElementById('game'),cx=cv.getContext('2d');
+cx.imageSmoothingEnabled=false;
+let W,H,S;
+function rs(){W=innerWidth;H=innerHeight;cv.width=W;cv.height=H;S=Math.min(W/480,H/270);}
+addEventListener('resize',rs);rs();
+
+/* --- Music --- */
+let AC=null,musicOn=true,mi=0,mt=null;
+const MEL=[7,-1,3,-1,5,-1,3,-1, 2,-1,7,-1,5,-1,3,-1];
+function nf(s){return 196*Math.pow(2,s/12);}
+function mStart(){
+  if(!musicOn)return;
+  try{
+    if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended')AC.resume();
+    if(mt)return;
+    const tick=()=>{
+      if(!musicOn||!AC)return;
+      const n=MEL[mi%MEL.length];mi++;
+      if(n>=0){
+        const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
+        o.type='triangle';o.frequency.value=nf(n);
+        g.gain.setValueAtTime(.05,t);g.gain.exponentialRampToValueAtTime(.001,t+.22);
+        o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.24);
+      }
+    };
+    tick();mt=setInterval(tick,230);
+  }catch(e){}
+}
+function mStop(){if(mt)clearInterval(mt);mt=null;if(AC){AC.close().catch(()=>{});AC=null;}}
+document.getElementById('musicBtn').onclick=e=>{e.stopPropagation();musicOn=!musicOn;document.getElementById('musicBtn').textContent=musicOn?'♪':'✕';musicOn?mStart():mStop();};
+addEventListener('pointerdown',()=>{if(musicOn)mStart();});
+
+/* --- Input --- */
+const K={l:0,r:0};
+function bind(id,k){const el=document.getElementById(id);el.addEventListener('pointerdown',e=>{e.preventDefault();K[k]=1;});['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>K[k]=0));}
+bind('btnL','l');bind('btnR','r');
+document.getElementById('btnJ').addEventListener('pointerdown',e=>{e.preventDefault();doJump();});
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='a')K.l=1;if(e.key==='ArrowRight'||e.key==='d')K.r=1;if(e.key===' '||e.key==='ArrowUp'||e.key==='w'){doJump();e.preventDefault();}if(e.key==='Escape')showMenu();});
+addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='a')K.l=0;if(e.key==='ArrowRight'||e.key==='d')K.r=0;});
+
+/* ===== LEVEL DATA — 103 deception levels =====
+   Format:
+   plats: [{x,y,w,h}]
+   portal: {x,y} (w=28,h=50 fixed)
+   spawn: {x,y}
+   traps: [{t:'pit',x,w,trig}] etc.
+   Trap types:
+   - pit: floor segment vanishes when player.x > trig
+   - spike: spikes pop up when |player.x - x| < trig
+   - fall: platform crumbles N frames after stepped on
+   - fake: fake portal (kills on enter), real portal elsewhere
+   - drop: block falls when player under it
+   - saw: moving saw blade on patrol
+*/
+const LW=480,LH=270;
+const LEVELS=[{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[]},{"p":[{"x":0,"y":220,"w":200,"h":50},{"x":240,"y":220,"w":240,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[]},{"p":[{"x":0,"y":220,"w":140,"h":50},{"x":180,"y":220,"w":120,"h":50},{"x":340,"y":220,"w":140,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[]},{"p":[{"x":0,"y":220,"w":160,"h":50},{"x":180,"y":180,"w":140,"h":50},{"x":340,"y":180,"w":140,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":130},"traps":[]},{"p":[{"x":0,"y":220,"w":120,"h":50},{"x":140,"y":180,"w":100,"h":50},{"x":260,"y":140,"w":100,"h":50},{"x":380,"y":140,"w":100,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":90},"traps":[]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":200,"y":190,"w":120,"h":50},{"x":360,"y":190,"w":120,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":140},"traps":[]},{"p":[{"x":0,"y":220,"w":100,"h":50},{"x":130,"y":220,"w":90,"h":50},{"x":250,"y":180,"w":90,"h":50},{"x":370,"y":180,"w":110,"h":50}],"s":{"x":20,"y":180},"g":{"x":430,"y":130},"traps":[]},{"p":[{"x":0,"y":220,"w":120,"h":50},{"x":140,"y":170,"w":100,"h":50},{"x":260,"y":120,"w":100,"h":50},{"x":380,"y":120,"w":100,"h":50}],"s":{"x":20,"y":180},"g":{"x":430,"y":70},"traps":[]},{"p":[{"x":0,"y":140,"w":300,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":100},"g":{"x":400,"y":170},"traps":[]},{"p":[{"x":0,"y":220,"w":110,"h":50},{"x":140,"y":175,"w":100,"h":50},{"x":270,"y":175,"w":90,"h":50},{"x":390,"y":220,"w":90,"h":50}],"s":{"x":20,"y":180},"g":{"x":430,"y":170},"traps":[]},{"p":[{"x":0,"y":220,"w":180,"h":50},{"x":180,"y":220,"w":50,"h":50},{"x":230,"y":220,"w":250,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":120}]},{"p":[{"x":0,"y":220,"w":197,"h":50},{"x":197,"y":220,"w":60,"h":50},{"x":257,"y":220,"w":223,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":137}]},{"p":[{"x":0,"y":220,"w":214,"h":50},{"x":214,"y":220,"w":50,"h":50},{"x":264,"y":220,"w":216,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":154}]},{"p":[{"x":0,"y":220,"w":231,"h":50},{"x":231,"y":220,"w":60,"h":50},{"x":291,"y":220,"w":189,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":171}]},{"p":[{"x":0,"y":220,"w":248,"h":50},{"x":248,"y":220,"w":50,"h":50},{"x":298,"y":220,"w":182,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":188}]},{"p":[{"x":0,"y":220,"w":265,"h":50},{"x":265,"y":220,"w":60,"h":50},{"x":325,"y":220,"w":155,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":205}]},{"p":[{"x":0,"y":220,"w":282,"h":50},{"x":282,"y":220,"w":50,"h":50},{"x":332,"y":220,"w":148,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":222}]},{"p":[{"x":0,"y":220,"w":299,"h":50},{"x":299,"y":220,"w":60,"h":50},{"x":359,"y":220,"w":121,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":239}]},{"p":[{"x":0,"y":220,"w":196,"h":50},{"x":196,"y":220,"w":50,"h":50},{"x":246,"y":220,"w":234,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":136}]},{"p":[{"x":0,"y":220,"w":213,"h":50},{"x":213,"y":220,"w":60,"h":50},{"x":273,"y":220,"w":207,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":153}]},{"p":[{"x":0,"y":220,"w":230,"h":50},{"x":230,"y":220,"w":50,"h":50},{"x":280,"y":220,"w":200,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":170}]},{"p":[{"x":0,"y":220,"w":247,"h":50},{"x":247,"y":220,"w":60,"h":50},{"x":307,"y":220,"w":173,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":187}]},{"p":[{"x":0,"y":220,"w":264,"h":50},{"x":264,"y":220,"w":50,"h":50},{"x":314,"y":220,"w":166,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":204}]},{"p":[{"x":0,"y":220,"w":281,"h":50},{"x":281,"y":220,"w":60,"h":50},{"x":341,"y":220,"w":139,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":221}]},{"p":[{"x":0,"y":220,"w":298,"h":50},{"x":298,"y":220,"w":50,"h":50},{"x":348,"y":220,"w":132,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":238}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":150,"y":220,"w":30,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":173,"y":220,"w":50,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":196,"y":220,"w":30,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":219,"y":220,"w":50,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":242,"y":220,"w":30,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":265,"y":220,"w":50,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":288,"y":220,"w":30,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":161,"y":220,"w":50,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":184,"y":220,"w":30,"trig":70},{"t":"spike","x":304,"y":220,"w":30,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":207,"y":220,"w":50,"trig":70},{"t":"spike","x":327,"y":220,"w":50,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":230,"y":220,"w":30,"trig":70},{"t":"spike","x":350,"y":220,"w":30,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":253,"y":220,"w":50,"trig":70},{"t":"spike","x":373,"y":220,"w":50,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":276,"y":220,"w":30,"trig":70},{"t":"spike","x":396,"y":220,"w":30,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":299,"y":220,"w":50,"trig":70},{"t":"spike","x":419,"y":220,"w":50,"trig":70}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"spike","x":172,"y":220,"w":30,"trig":70},{"t":"spike","x":292,"y":220,"w":30,"trig":70}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83},{"t":"fall","pi":2,"warn":87}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83},{"t":"fall","pi":2,"warn":87}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83},{"t":"fall","pi":2,"warn":87}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83},{"t":"fall","pi":2,"warn":87}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":170,"y":220,"w":140,"h":50},{"x":330,"y":220,"w":150,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"fall","pi":1,"warn":83},{"t":"fall","pi":2,"warn":87}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":30,"y":170},"traps":[{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":200,"h":50},{"x":220,"y":175,"w":260,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":125},"traps":[{"t":"fake","x":100,"y":170}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":220,"y":170},"traps":[{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":30,"y":170},"traps":[{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":200,"h":50},{"x":220,"y":175,"w":260,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":125},"traps":[{"t":"fake","x":100,"y":170}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":220,"y":170},"traps":[{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":30,"y":170},"traps":[{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":200,"h":50},{"x":220,"y":175,"w":260,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":125},"traps":[{"t":"fake","x":100,"y":170}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":220,"y":170},"traps":[{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":30,"y":170},"traps":[{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":200,"h":50},{"x":220,"y":175,"w":260,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":125},"traps":[{"t":"fake","x":100,"y":170}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":220,"y":170},"traps":[{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":30,"y":170},"traps":[{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":200,"h":50},{"x":220,"y":175,"w":260,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":125},"traps":[{"t":"fake","x":100,"y":170}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":220,"y":170},"traps":[{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"drop","x":200,"y":0,"w":30,"h":30}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"drop","x":231,"y":0,"w":30,"h":30}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"drop","x":262,"y":0,"w":30,"h":30}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"drop","x":293,"y":0,"w":30,"h":30}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"drop","x":204,"y":0,"w":30,"h":30}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"drop","x":235,"y":0,"w":30,"h":30},{"t":"drop","x":315,"y":-60,"w":30,"h":30}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"drop","x":266,"y":0,"w":30,"h":30},{"t":"drop","x":346,"y":-60,"w":30,"h":30}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"drop","x":297,"y":0,"w":30,"h":30},{"t":"drop","x":377,"y":-60,"w":30,"h":30}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"drop","x":208,"y":0,"w":30,"h":30},{"t":"drop","x":288,"y":-60,"w":30,"h":30}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"drop","x":239,"y":0,"w":30,"h":30},{"t":"drop","x":319,"y":-60,"w":30,"h":30}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"saw","x":150,"y":200,"x1":110,"x2":230,"dx":1.2}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"saw","x":179,"y":200,"x1":139,"x2":259,"dx":1.6}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"saw","x":208,"y":200,"x1":168,"x2":288,"dx":2.0}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"saw","x":237,"y":200,"x1":197,"x2":317,"dx":1.2}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"saw","x":166,"y":200,"x1":126,"x2":246,"dx":1.6}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"saw","x":195,"y":200,"x1":155,"x2":275,"dx":2.0}]},{"p":[{"x":0,"y":220,"w":200,"h":50},{"x":230,"y":220,"w":250,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"saw","x":224,"y":200,"x1":184,"x2":304,"dx":1.2},{"t":"saw","x":280,"y":200,"x1":240,"x2":380,"dx":-1.5}]},{"p":[{"x":0,"y":220,"w":200,"h":50},{"x":230,"y":220,"w":250,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"saw","x":153,"y":200,"x1":113,"x2":233,"dx":1.6},{"t":"saw","x":280,"y":200,"x1":240,"x2":380,"dx":-1.5}]},{"p":[{"x":0,"y":220,"w":200,"h":50},{"x":230,"y":220,"w":250,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"saw","x":182,"y":200,"x1":142,"x2":262,"dx":2.0},{"t":"saw","x":280,"y":200,"x1":240,"x2":380,"dx":-1.5}]},{"p":[{"x":0,"y":220,"w":200,"h":50},{"x":230,"y":220,"w":250,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"saw","x":211,"y":200,"x1":171,"x2":291,"dx":1.2},{"t":"saw","x":280,"y":200,"x1":240,"x2":380,"dx":-1.5}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":150,"y":220,"w":60,"h":50},{"x":210,"y":220,"w":270,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":90},{"t":"spike","x":350,"y":220,"w":30,"trig":60}]},{"p":[{"x":0,"y":220,"w":169,"h":50},{"x":169,"y":220,"w":60,"h":50},{"x":229,"y":220,"w":251,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":109},{"t":"spike","x":350,"y":220,"w":30,"trig":60}]},{"p":[{"x":0,"y":220,"w":188,"h":50},{"x":188,"y":220,"w":60,"h":50},{"x":248,"y":220,"w":232,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":128},{"t":"spike","x":350,"y":220,"w":30,"trig":60}]},{"p":[{"x":0,"y":220,"w":207,"h":50},{"x":207,"y":220,"w":60,"h":50},{"x":267,"y":220,"w":213,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":147},{"t":"spike","x":350,"y":220,"w":30,"trig":60}]},{"p":[{"x":0,"y":220,"w":226,"h":50},{"x":226,"y":220,"w":60,"h":50},{"x":286,"y":220,"w":194,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":166},{"t":"spike","x":350,"y":220,"w":30,"trig":60}]},{"p":[{"x":0,"y":220,"w":165,"h":50},{"x":165,"y":220,"w":60,"h":50},{"x":225,"y":220,"w":255,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":105},{"t":"spike","x":350,"y":220,"w":30,"trig":60},{"t":"saw","x":80,"y":200,"x1":40,"x2":130,"dx":1.5}]},{"p":[{"x":0,"y":220,"w":184,"h":50},{"x":184,"y":220,"w":60,"h":50},{"x":244,"y":220,"w":236,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":124},{"t":"spike","x":350,"y":220,"w":30,"trig":60},{"t":"saw","x":80,"y":200,"x1":40,"x2":130,"dx":1.5}]},{"p":[{"x":0,"y":220,"w":203,"h":50},{"x":203,"y":220,"w":60,"h":50},{"x":263,"y":220,"w":217,"h":50}],"s":{"x":30,"y":180},"g":{"x":420,"y":170},"traps":[{"t":"pit","pi":1,"trig":143},{"t":"spike","x":350,"y":220,"w":30,"trig":60},{"t":"saw","x":80,"y":200,"x1":40,"x2":130,"dx":1.5}]},{"p":[{"x":0,"y":220,"w":222,"h":50},{"x":222,"y":220,"w":60,"h":50},{"x":282,"y":220,"w":198,"h":50}],"s":{"x":30,"y":180},"g":{"x":30,"y":170},"traps":[{"t":"pit","pi":1,"trig":162},{"t":"spike","x":350,"y":220,"w":30,"trig":60},{"t":"saw","x":80,"y":200,"x1":40,"x2":130,"dx":1.5},{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":161,"h":50},{"x":161,"y":220,"w":60,"h":50},{"x":221,"y":220,"w":259,"h":50}],"s":{"x":30,"y":180},"g":{"x":30,"y":170},"traps":[{"t":"pit","pi":1,"trig":101},{"t":"spike","x":350,"y":220,"w":30,"trig":60},{"t":"saw","x":80,"y":200,"x1":40,"x2":130,"dx":1.5},{"t":"fake","x":420,"y":170}]},{"p":[{"x":0,"y":220,"w":150,"h":50},{"x":150,"y":220,"w":60,"h":50},{"x":210,"y":220,"w":120,"h":50},{"x":360,"y":220,"w":120,"h":50}],"s":{"x":20,"y":180},"g":{"x":430,"y":170},"traps":[{"t":"pit","pi":1,"trig":90},{"t":"spike","x":240,"y":220,"w":30,"trig":60},{"t":"saw","x":60,"y":200,"x1":20,"x2":130,"dx":1.8}]},{"p":[{"x":0,"y":220,"w":480,"h":50}],"s":{"x":30,"y":180},"g":{"x":240,"y":170},"traps":[{"t":"fake","x":420,"y":170},{"t":"fake","x":100,"y":170},{"t":"spike","x":200,"y":220,"w":30,"trig":60}]},{"p":[{"x":0,"y":220,"w":100,"h":50},{"x":130,"y":180,"w":60,"h":50},{"x":190,"y":180,"w":120,"h":50},{"x":310,"y":180,"w":40,"h":50},{"x":370,"y":220,"w":110,"h":50}],"s":{"x":20,"y":180},"g":{"x":430,"y":170},"traps":[{"t":"pit","pi":3,"trig":250},{"t":"saw","x":390,"y":200,"x1":370,"x2":450,"dx":2.0},{"t":"spike","x":150,"y":180,"w":25,"trig":50}]}];
+
+
+/* ===== GAME STATE ===== */
+let LI=0, deaths=0;
+let P={x:0,y:0,w:12,h:18,vx:0,vy:0,ground:false,face:1,dead:false,win:false};
+let cam=0,shake=0,clearT=0,absorb=0,doorClose=0,fadeT=0;
+let trapState=[];
+let unlocked=parseInt(localStorage.getItem('wtd_unlocked')||'1');
+let totalDeaths=parseInt(localStorage.getItem('wtd_deaths')||'0');
+
+function cur(){return LEVELS[LI];}
+function doJump(){if(P.ground&&!P.dead&&!P.win){P.vy=-8.2;P.ground=false;}}
+
+function loadLevel(i){
+  LI=i;const L=cur();
+  P.x=L.s.x;P.y=L.s.y;P.vx=0;P.vy=0;P.ground=false;P.dead=false;P.win=false;P.face=1;
+  cam=0;shake=0;clearT=0;absorb=0;doorClose=0;fadeT=0;
+  trapState=(L.traps||[]).map(t=>({...t,active:false,timer:0}));
+  document.getElementById('lvLabel').textContent='LV '+String(i+1).padStart(3,'0');
+}
+
+function die(){
+  if(P.dead||P.win)return;
+  P.dead=true;deaths++;totalDeaths++;
+  document.getElementById('deaths').textContent='☠ '+deaths;
+  localStorage.setItem('wtd_deaths',totalDeaths);
+  const f=document.getElementById('deathFlash');f.style.opacity=.35;
+  setTimeout(()=>f.style.opacity=0,120);
+  shake=6;
+  setTimeout(()=>{const L=cur();P.x=L.s.x;P.y=L.s.y;P.vx=0;P.vy=0;P.dead=false;
+    trapState=(L.traps||[]).map(t=>({...t,active:false,timer:0}));},450);
+}
+
+function nextLevel(){
+  const nl=LI+1;
+  if(nl<LEVELS.length){
+    if(nl+1>unlocked){unlocked=nl+1;localStorage.setItem('wtd_unlocked',unlocked);}
+    loadLevel(nl);
+  }else{
+    showMenu(); // completed all
+  }
+}
+
+/* ===== UPDATE ===== */
+function update(){
+  const L=cur();
+  if(P.win){
+    clearT++;
+    if(absorb<1)absorb=Math.min(1,absorb+0.04);
+    if(absorb>=1&&doorClose<1)doorClose=Math.min(1,doorClose+0.06);
+    if(doorClose>=1){
+      fadeT=Math.min(1,fadeT+0.025);
+      if(fadeT>=1&&clearT>110)nextLevel();
+    }
+    return;
+  }
+  const SP=2.4;
+  if(!P.dead){
+    if(K.l){P.vx=-SP;P.face=-1;}else if(K.r){P.vx=SP;P.face=1;}else P.vx*=0.72;
+  }
+  P.vy+=0.42;if(P.vy>9)P.vy=9;
+  P.x+=P.vx;P.y+=P.vy;P.ground=false;
+
+  // platforms (skip vanished pit segments)
+  const plats=L.p.filter(pl=>{
+    const ts=trapState.find(t=>t.t==='pit'&&t.pi===L.p.indexOf(pl));
+    return !(ts&&ts.active);
+  });
+  for(const pl of plats){
+    if(P.x<pl.x+pl.w&&P.x+P.w>pl.x&&P.y<pl.y+pl.h&&P.y+P.h>pl.y){
+      if(P.vy>=0&&P.y+P.h-P.vy<=pl.y+9){P.y=pl.y-P.h;P.vy=0;P.ground=true;
+        // falling platform trigger
+        const ts=trapState.find(t=>t.t==='fall'&&t.pi===L.p.indexOf(pl));
+        if(ts&&!ts.active){ts.active=true;ts.timer=ts.warn||25;}
+      }
+      else if(P.vy<0&&P.y-P.vy>=pl.y+pl.h-9){P.y=pl.y+pl.h;P.vy=0;}
+      else if(P.vx>0)P.x=pl.x-P.w;else if(P.vx<0)P.x=pl.x+pl.w;
+    }
+  }
+  if(P.x<0)P.x=0;if(P.x>LW-P.w)P.x=LW-P.w;
+
+  // traps
+  for(const ts of trapState){
+    if(ts.t==='pit'&&!ts.active&&P.x>ts.trig){ts.active=true;}
+    if(ts.t==='spike'&&!ts.active&&Math.abs((P.x+P.w/2)-ts.x)<ts.trig){ts.active=true;ts.timer=12;}
+    if(ts.t==='spike'&&ts.active&&ts.timer>0){ts.timer--;
+      if(ts.timer===0){
+        // check kill
+        if(P.x<ts.x+ts.w&&P.x+P.w>ts.x&&P.y+P.h>ts.y&&P.y<ts.y+20)die();
+      }}
+    if(ts.t==='fall'&&ts.active){ts.timer--;
+      if(ts.timer<=0){/* platform gone handled by filter */}
+    }
+    if(ts.t==='drop'&&!ts.active&&P.x<ts.x+ts.w&&P.x+P.w>ts.x){ts.active=true;ts.vy=0;}
+    if(ts.t==='drop'&&ts.active){ts.vy+=0.5;ts.y+=ts.vy;
+      if(P.x<ts.x+ts.w&&P.x+P.w>ts.x&&P.y<ts.y+ts.h&&P.y+P.h>ts.y)die();}
+    if(ts.t==='saw'){
+      ts.x+=ts.dx;if(ts.x<ts.x1||ts.x>ts.x2)ts.dx*=-1;
+      const scx=P.x+P.w/2,scy=P.y+P.h/2;
+      const dx=scx-(ts.x+10),dy=scy-(ts.y+10);
+      if(dx*dx+dy*dy<18*18)die();
+    }
+    if(ts.t==='fake'){
+      const pcx=P.x+P.w/2,pcy=P.y+P.h/2;
+      if(pcx>ts.x+4&&pcx<ts.x+24&&pcy>ts.y&&pcy<ts.y+50)die();
+    }
+  }
+  // remove fully-crumbled fall platforms from collision
+  for(const ts of trapState){
+    if(ts.t==='fall'&&ts.active&&ts.timer<=0){
+      const idx=L.p.indexOf(L.p[ts.pi]);
+      // mark for filter
+      ts.gone=true;
+    }
+  }
+
+  if(P.y>LH+40)die();
+
+  // portal enter (walk INTO center)
+  const G=L.g;
+  if(!P.dead){
+    const pcx=P.x+P.w/2,pcy=P.y+P.h/2;
+    if(pcx>G.x+4&&pcx<G.x+24&&pcy>G.y&&pcy<G.y+50){P.win=true;clearT=0;absorb=0;}
+  }
+  cam=Math.max(0,Math.min(P.x-200,LW-480));
+  if(shake>0)shake*=0.85;
+}
+
+/* ===== DRAW ===== */
+function draw(){
+  const L=cur();
+  cx.setTransform(1,0,0,1,0,0);
+  cx.fillStyle='#0b0f1a';cx.fillRect(0,0,W,H);
+  cx.fillStyle='rgba(61,220,132,.10)';
+  const pt=Date.now()*0.00003;
+  for(let i=0;i<40;i++){
+    const px=((i*197.3)%1)*W,py=(((i*311.7)%1)+pt*(1+(i%3)*0.4))%1*H;
+    cx.fillRect(px,py,1+(i%3),1+(i%3));
+  }
+  cx.fillStyle='rgba(120,160,220,.04)';
+  const gs=Math.max(18,Math.round(24*S/2));
+  for(let gx=0;gx<W;gx+=gs)cx.fillRect(gx,0,1,H);
+  for(let gy=0;gy<H;gy+=gs)cx.fillRect(0,gy,W,1);
+
+  const ox=Math.round((W-480*S)/2),oy=Math.round((H-270*S)/2);
+  cx.save();cx.translate(ox,oy);cx.scale(S,S);
+  if(shake>0.3)cx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  cx.translate(-Math.round(cam),0);
+
+  cx.fillStyle='#0f1420';cx.fillRect(cam-10,0,500,270);
+
+  // platforms
+  L.p.forEach((pl,pi)=>{
+    const ts=trapState.find(t=>(t.t==='pit'||t.t==='fall')&&t.pi===pi);
+    if(ts&&(ts.active&&(ts.t==='pit'||ts.gone)))return; // vanished
+    let alpha=1;
+    if(ts&&ts.t==='fall'&&ts.active)alpha=Math.max(0.2,ts.timer/(ts.warn||25));
+    cx.globalAlpha=alpha;
+    cx.fillStyle='#232c44';cx.fillRect(pl.x,pl.y,pl.w,pl.h);
+    cx.fillStyle='#3ddc84';cx.fillRect(pl.x,pl.y,pl.w,3);
+    cx.globalAlpha=1;
+  });
+
+  // spikes
+  for(const ts of trapState){
+    if(ts.t!=='spike'||!ts.active)continue;
+    const prog=1-ts.timer/12;
+    const sh=20*prog;
+    cx.fillStyle='#ff2d55';
+    for(let sx=ts.x;sx<ts.x+ts.w;sx+=10){
+      cx.beginPath();cx.moveTo(sx,ts.y+4);cx.lineTo(sx+5,ts.y+4-sh);cx.lineTo(sx+10,ts.y+4);cx.fill();
+    }
+  }
+  // falling blocks
+  for(const ts of trapState){
+    if(ts.t!=='drop')continue;
+    cx.fillStyle='#4a3a5a';cx.fillRect(ts.x,ts.y,ts.w,ts.h);
+    cx.fillStyle='#ff2d55';cx.fillRect(ts.x,ts.y+ts.h-4,ts.w,4);
+  }
+  // saws
+  for(const ts of trapState){
+    if(ts.t!=='saw')continue;
+    cx.save();cx.translate(ts.x+10,ts.y+10);cx.rotate(Date.now()*0.01);
+    cx.fillStyle='#c0c8d8';
+    for(let i=0;i<8;i++){cx.rotate(Math.PI/4);cx.fillRect(-2,-12,4,24);}
+    cx.fillStyle='#ff2d55';cx.beginPath();cx.arc(0,0,4,0,7);cx.fill();
+    cx.restore();
+  }
+  // fake portals (look identical to real)
+  for(const ts of trapState){
+    if(ts.t!=='fake')continue;
+    drawPortal(ts.x,ts.y,0);
+  }
+
+  // real portal
+  const G=L.g;
+  drawPortal(G.x,G.y,doorClose);
+
+  // player wisp
+  if(!P.dead&&(absorb<1||!P.win)){
+    const px=Math.round(P.x),py=Math.round(P.y);
+    const bob=P.ground&&!P.win?Math.round(Math.sin(Date.now()*0.008)*1):0;
+    const sc=P.win?(1-absorb):1;
+    cx.save();cx.translate(px+P.w/2,py+bob+P.h/2);cx.scale(sc*(P.face<0?-1:1),sc);cx.translate(-P.w/2,-P.h/2);
+    cx.fillStyle='#7ef0ff';cx.fillRect(-6,2,12,12);
+    cx.fillStyle='#2fb9d4';cx.fillRect(-6,10,12,4);
+    cx.fillStyle='#bdfaff';cx.fillRect(-5,-4,10,7);
+    cx.fillStyle='#0f1420';cx.fillRect(-3,-2,3,3);cx.fillRect(1,-2,3,3);
+    cx.fillStyle='#fff';cx.fillRect(-2,-1,1,1);cx.fillRect(2,-1,1,1);
+    const st=Math.abs(P.vx)>0.3?(Date.now()*0.02|0)%2:0;
+    cx.fillStyle='#2fb9d4';cx.fillRect(-5,14,4,3+st);cx.fillRect(1,14,4,4-st);
+    cx.fillStyle='rgba(126,240,255,.5)';cx.fillRect(-8,6,2,6);
+    cx.restore();
+  }
+
+  // win sparkles
+  if(P.win&&doorClose>=1&&fadeT<0.5){
+    cx.fillStyle='#9a6bff';
+    for(let i=0;i<10;i++){
+      const a=Date.now()*0.004+i*0.6;
+      cx.fillRect(G.x+14+Math.cos(a)*18-1,G.y+20+Math.sin(a)*18-1,2,2);
+    }
+  }
+  cx.restore();
+  if(fadeT>0){cx.setTransform(1,0,0,1,0,0);cx.fillStyle='rgba(0,0,0,'+fadeT+')';cx.fillRect(0,0,W,H);}
+}
+
+function drawPortal(x,y,dc){
+  const gl=0.6+0.4*Math.sin(Date.now()*0.006);
+  if(dc>=1)return;
+  cx.fillStyle='rgba(120,80,220,'+(0.12*gl*(1-dc))+')';cx.fillRect(x-8,y-8,44,66);
+  const gcx=x+14,gw=14*(1-dc);
+  cx.fillStyle='#05060a';cx.fillRect(gcx-gw,y,gw*2,50);
+  cx.fillStyle='rgba(150,100,255,'+((0.25+0.2*gl)*(1-dc))+')';
+  cx.fillRect(gcx-2*(1-dc),y+6,4*(1-dc),38);
+  cx.fillStyle='rgba(42,36,56,'+(1-dc)+')';
+  cx.fillRect(x,y,28,2);cx.fillRect(x,y+48,28,2);cx.fillRect(x,y,2,50);cx.fillRect(x+26,y,2,50);
+}
+
+/* ===== MENU ===== */
+function showMenu(){
+  document.getElementById('menu').style.display='flex';
+  document.getElementById('hud').style.display='none';
+  document.getElementById('controls').style.display='none';
+  const grid=document.getElementById('levelGrid');grid.innerHTML='';
+  LEVELS.forEach((_,i)=>{
+    const b=document.createElement('button');
+    b.className='lvbtn'+(i<unlocked?' open':'')+(i<unlocked-1?' done':'');
+    b.textContent=i+1;
+    if(i<unlocked)b.onclick=()=>startGame(i);
+    grid.appendChild(b);
+  });
+}
+function startGame(i){
+  document.getElementById('menu').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  document.getElementById('controls').style.display='flex';
+  deaths=0;document.getElementById('deaths').textContent='☠ 0';
+  loadLevel(i||0);
+  if(musicOn)mStart();
+}
+document.getElementById('playBtn').onclick=()=>startGame(Math.min(unlocked-1,LEVELS.length-1));
+
+showMenu();
+(function loop(){if(document.getElementById('menu').style.display==='none'){update();draw();}requestAnimationFrame(loop);})();
+</script>
+</body>
+</html>
