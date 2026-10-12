@@ -84,7 +84,7 @@ const SPAWN={x:30,y:180};
 
 /* --- Player: small pixel WISP (own character, not a devil) --- */
 const P={x:SPAWN.x,y:SPAWN.y,w:12,h:18,vx:0,vy:0,ground:false,face:1,dead:false,win:false};
-let deaths=0,cam=0,shake=0,clearT=0,absorb=0,doorClose=0;
+let deaths=0,cam=0,shake=0,clearT=0,absorb=0,doorClose=0,fadeT=0;
 
 function doJump(){if(P.ground&&!P.dead&&!P.win){P.vy=-8.2;P.ground=false;}}
 function showMsg(t,ms){const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;clearTimeout(m._t);m._t=setTimeout(()=>m.style.opacity=0,ms||1500);}
@@ -96,16 +96,20 @@ function die(){
   shake=6;
   setTimeout(()=>{P.x=SPAWN.x;P.y=SPAWN.y;P.vx=0;P.vy=0;P.dead=false;},450);
 }
-function reset(){P.x=SPAWN.x;P.y=SPAWN.y;P.vx=0;P.vy=0;P.dead=false;P.win=false;cam=0;absorb=0;doorClose=0;}
+function reset(){P.x=SPAWN.x;P.y=SPAWN.y;P.vx=0;P.vy=0;P.dead=false;P.win=false;cam=0;absorb=0;doorClose=0;fadeT=0;clearT=0;}
 
 function update(){
   if(P.win){
     clearT++;
     // absorb animation: player shrinks into portal
     if(absorb<1)absorb=Math.min(1,absorb+0.04);
-    // door closes behind the player
+    // door closes behind the player, then vanishes
     if(absorb>=1&&doorClose<1)doorClose=Math.min(1,doorClose+0.06);
-    if(clearT===60)showMsg('★ CLEAR ★',1800);
+    // silent fade to black, then reset (no text, no hints)
+    if(doorClose>=1){
+      fadeT=Math.min(1,fadeT+0.02);
+      if(fadeT>=1&&clearT>120){reset();fadeT=0;}
+    }
     return;
   }
   const SP=2.4;
@@ -217,21 +221,24 @@ function draw(){
     cx.restore();
   }
 
-  // Win sparkles (after door fully shut)
-  if(P.win&&doorClose>=1){
+  // Win sparkles (after door fully shut) — no text
+  if(P.win&&doorClose>=1&&fadeT<0.5){
     cx.fillStyle='#9a6bff';
     for(let i=0;i<12;i++){
       const a=Date.now()*0.004+i*0.5;
       cx.fillRect(GOAL.x+GOAL.w/2+Math.cos(a)*20*gl-1,GOAL.y+20+Math.sin(a)*20*gl-1,2,2);
     }
-    if(clearT>160){cx.fillStyle='#e8f0ff';cx.font='bold 14px monospace';cx.textAlign='center';cx.fillText('Level 2 → soon',cam+240,140);}
   }
 
   cx.restore();
+  // silent fade to black on win
+  if(fadeT>0){
+    cx.setTransform(1,0,0,1,0,0);
+    cx.fillStyle='rgba(0,0,0,'+fadeT+')';cx.fillRect(0,0,W,H);
+  }
 }
 
 reset();
-showMsg('Walk right →',2000);
 (function loop(){update();draw();requestAnimationFrame(loop);})();
 </script>
 </body>
