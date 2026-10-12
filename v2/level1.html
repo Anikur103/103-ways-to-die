@@ -84,7 +84,7 @@ const SPAWN={x:30,y:180};
 
 /* --- Player: small pixel WISP (own character, not a devil) --- */
 const P={x:SPAWN.x,y:SPAWN.y,w:12,h:18,vx:0,vy:0,ground:false,face:1,dead:false,win:false};
-let deaths=0,cam=0,shake=0,clearT=0;
+let deaths=0,cam=0,shake=0,clearT=0,absorb=0;
 
 function doJump(){if(P.ground&&!P.dead&&!P.win){P.vy=-8.2;P.ground=false;}}
 function showMsg(t,ms){const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;clearTimeout(m._t);m._t=setTimeout(()=>m.style.opacity=0,ms||1500);}
@@ -96,10 +96,16 @@ function die(){
   shake=6;
   setTimeout(()=>{P.x=SPAWN.x;P.y=SPAWN.y;P.vx=0;P.vy=0;P.dead=false;},450);
 }
-function reset(){P.x=SPAWN.x;P.y=SPAWN.y;P.vx=0;P.vy=0;P.dead=false;P.win=false;cam=0;}
+function reset(){P.x=SPAWN.x;P.y=SPAWN.y;P.vx=0;P.vy=0;P.dead=false;P.win=false;cam=0;absorb=0;}
 
 function update(){
-  if(P.win){clearT++;return;}
+  if(P.win){
+    clearT++;
+    // absorb animation: player shrinks into portal
+    if(absorb<1)absorb=Math.min(1,absorb+0.04);
+    if(clearT===40)showMsg('★ CLEAR ★',1800);
+    return;
+  }
   const SP=2.4;
   if(!P.dead){
     if(K.l){P.vx=-SP;P.face=-1;}else if(K.r){P.vx=SP;P.face=1;}else P.vx*=0.72;
@@ -115,9 +121,12 @@ function update(){
   }
   if(P.x<0)P.x=0;if(P.x>LW-P.w)P.x=LW-P.w;
   if(P.y>LH+40)die();
-  // goal
-  if(!P.dead&&P.x<GOAL.x+GOAL.w&&P.x+P.w>GOAL.x&&P.y<GOAL.y+GOAL.h&&P.y+P.h>GOAL.y){
-    P.win=true;clearT=0;showMsg('★ LEVEL CLEAR ★',2200);
+  // goal: player must walk INTO the portal center (no touch-edge win)
+  if(!P.dead&&!P.win){
+    const pcx=P.x+P.w/2, pcy=P.y+P.h/2;
+    if(pcx>GOAL.x+4&&pcx<GOAL.x+GOAL.w-4&&pcy>GOAL.y&&pcy<GOAL.y+GOAL.h){
+      P.win=true;clearT=0;absorb=0;
+    }
   }
   cam=Math.max(0,Math.min(P.x-200,LW-480));
   if(shake>0)shake*=0.85;
@@ -163,21 +172,26 @@ function draw(){
     for(let dx=10;dx<p.w-6;dx+=26)cx.fillRect(p.x+dx,p.y+14,14,3);
   }
 
-  // GOAL: glowing teal gate (own design, not a white door)
+  // GOAL: mysterious dark portal — NO label, NO hint (deception is the game)
   const gl=0.6+0.4*Math.sin(Date.now()*0.006);
-  cx.fillStyle='rgba(61,220,132,'+(0.25*gl)+')';cx.fillRect(GOAL.x-6,GOAL.y-6,GOAL.w+12,GOAL.h+12);
-  cx.fillStyle='#0b2e1f';cx.fillRect(GOAL.x,GOAL.y,GOAL.w,GOAL.h);
-  cx.fillStyle='#3ddc84';cx.fillRect(GOAL.x,GOAL.y,GOAL.w,3);cx.fillRect(GOAL.x,GOAL.y+GOAL.h-3,GOAL.w,3);
-  cx.fillRect(GOAL.x,GOAL.y,3,GOAL.h);cx.fillRect(GOAL.x+GOAL.w-3,GOAL.y,3,GOAL.h);
-  cx.fillStyle='rgba(61,220,132,'+(0.5+0.5*gl)+')';cx.fillRect(GOAL.x+9,GOAL.y+12,GOAL.w-18,GOAL.h-24);
-  cx.fillStyle='#e8f0ff';cx.font='bold 9px monospace';cx.textAlign='center';
-  cx.fillText('EXIT',GOAL.x+GOAL.w/2,GOAL.y-8);
+  // subtle outer glow (barely visible)
+  cx.fillStyle='rgba(120,80,220,'+(0.12*gl)+')';cx.fillRect(GOAL.x-8,GOAL.y-8,GOAL.w+16,GOAL.h+16);
+  // dark void
+  cx.fillStyle='#05060a';cx.fillRect(GOAL.x,GOAL.y,GOAL.w,GOAL.h);
+  // faint purple inner shimmer
+  cx.fillStyle='rgba(150,100,255,'+(0.25+0.2*gl)+')';
+  cx.fillRect(GOAL.x+GOAL.w/2-2,GOAL.y+6,4,GOAL.h-12);
+  // thin frame
+  cx.fillStyle='#2a2438';cx.fillRect(GOAL.x,GOAL.y,GOAL.w,2);cx.fillRect(GOAL.x,GOAL.y+GOAL.h-2,GOAL.w,2);
+  cx.fillRect(GOAL.x,GOAL.y,2,GOAL.h);cx.fillRect(GOAL.x+GOAL.w-2,GOAL.y,2,GOAL.h);
 
   // Player: WISP — small cyan pixel spirit (simple, readable)
-  if(!P.dead){
+  // during win: shrink into the portal
+  if(!P.dead&&(absorb<1||!P.win)){
     const px=Math.round(P.x),py=Math.round(P.y);
-    const bob=P.ground?Math.round(Math.sin(Date.now()*0.008)*1):0;
-    cx.save();cx.translate(px+P.w/2,py+bob);if(P.face<0)cx.scale(-1,1);
+    const bob=P.ground&&!P.win?Math.round(Math.sin(Date.now()*0.008)*1):0;
+    const sc=P.win?(1-absorb):1;
+    cx.save();cx.translate(px+P.w/2,py+bob+P.h/2);cx.scale(sc*(P.face<0?-1:1),sc);cx.translate(-P.w/2,-P.h/2);
     // body
     cx.fillStyle='#7ef0ff';cx.fillRect(-6,2,12,12);
     cx.fillStyle='#2fb9d4';cx.fillRect(-6,10,12,4);
@@ -195,8 +209,8 @@ function draw(){
   }
 
   // Win sparkles
-  if(P.win){
-    cx.fillStyle='#3ddc84';
+  if(P.win&&absorb>=1){
+    cx.fillStyle='#9a6bff';
     for(let i=0;i<12;i++){
       const a=Date.now()*0.004+i*0.5;
       cx.fillRect(GOAL.x+GOAL.w/2+Math.cos(a)*20*gl-1,GOAL.y+20+Math.sin(a)*20*gl-1,2,2);
@@ -208,7 +222,7 @@ function draw(){
 }
 
 reset();
-showMsg('Walk right → reach the EXIT',2400);
+showMsg('Walk right →',2000);
 (function loop(){update();draw();requestAnimationFrame(loop);})();
 </script>
 </body>
