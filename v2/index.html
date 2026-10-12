@@ -190,40 +190,13 @@ if(g.shake>0.3)cx.translate((Math.random()-.5)*g.shake,(Math.random()-.5)*g.shak
 // platforms (visually merged for invisible pits)
 const vp=mergePlats(g);
 for(const p of vp){
-cx.fillStyle='#e8e8e8';cx.fillRect(p.x,p.y,p.w,p.h);
-if(p.warn){cx.fillStyle='rgba(255,180,60,.5)';cx.fillRect(p.x,p.y,p.w,p.h);}}
-// spikes
-for(const t of g.ts){if(t.t!=='spike'||!t.active||t.timer>0)continue;
-cx.fillStyle='#ff0000';
-for(let s=0;s<t.w/10;s++){const sx=t.x+s*10;
-cx.beginPath();cx.moveTo(sx,t.y);cx.lineTo(sx+5,t.y-22);cx.lineTo(sx+10,t.y);cx.fill();}}
-// drops
-for(const t of g.ts){if(t.t!=='drop')continue;
-if(t.sy===undefined||t.sy<-30)continue;
-cx.fillStyle='#5a4a6a';cx.fillRect(t.sx,t.sy,t.w,t.h);
-cx.fillStyle='#7a5a8a';cx.fillRect(t.sx,t.sy,t.w,4);}
-// saws
-for(const t of g.ts){if(t.t!=='saw')continue;
-cx.save();cx.translate(t.sx+14,t.sy+14);cx.rotate(g.fr/7);
-cx.fillStyle='#c8c8d0';
-for(let i=0;i<8;i++){cx.rotate(Math.PI/4);
-cx.beginPath();cx.moveTo(0,0);cx.lineTo(15,-4);cx.lineTo(15,4);cx.fill();}
-cx.fillStyle='#e74c3c';cx.beginPath();cx.arc(0,0,5,0,7);cx.fill();cx.restore();}
-// door exit (Level Devil style)
-const gl=g.d.g;
-cx.fillStyle='#8a6a3a';cx.fillRect(gl.x,gl.y-6,20,46);
-cx.fillStyle='#5a4020';cx.fillRect(gl.x+3,gl.y-3,14,40);
-cx.fillStyle='#c8a850';cx.fillRect(gl.x+14,gl.y+14,3,3);
-// fake doors (identical!)
-for(const t of g.ts){if(t.t!=='fake')continue;
-cx.fillStyle='#8a6a3a';cx.fillRect(t.x,t.y-6,20,46);
-cx.fillStyle='#5a4020';cx.fillRect(t.x+3,t.y-3,14,40);}
-// player: WISP
-const px=g.px,py=g.py,bob=Math.sin(g.fr/9)*1.5;
-if(!g.dead){
-cx.fillStyle='#fff';cx.fillRect(px+2,py+2,14,20);
-cx.fillStyle='#000';cx.fillRect(px+5,py+8,3,4);cx.fillRect(px+10,py+8,3,4);
-}
+cx.fillStyle='#1e293b';cx.fillRect(p.x,p.y,p.w,p.h);
+cx.fillStyle='#334155';cx.fillRect(p.x,p.y,p.w,5);
+cx.fillStyle='#0f172a';cx.fillRect(p.x,p.y+p.h-4,p.w,4);
+cx.fillStyle='#5eead4';cx.fillRect(p.x,p.y,p.w,2);
+cx.fillStyle='rgba(255,255,255,.04)';
+for(let tx=p.x+10;tx<p.x+p.w-6;tx+=18)cx.fillRect(tx,p.y+10,2,p.h-18);
+if(p.warn){cx.fillStyle='rgba(255,180,60,.45)';cx.fillRect(p.x,p.y,p.w,p.h);}}
 if(g.win){cx.fillStyle='rgba(255,255,255,.45)';cx.fillRect(0,0,W,H);}
 cx.restore();
 }
@@ -248,7 +221,7 @@ function menu(){
 cx.textAlign='center';
 cx.fillStyle='#fff';cx.font='bold 40px Courier New';
 cx.fillText('103 WAYS TO DIE',W/2,58);
-cx.fillStyle='#ff0000';cx.font='bold 15px Courier New';
+cx.fillStyle='#dc2626';cx.font='bold 15px Courier New';
 cx.fillText('TRUST NOTHING',W/2,84);
 const per=13,bw=30,bh=24;
 const gx=(W-per*(bw+5))/2;let y=110;
