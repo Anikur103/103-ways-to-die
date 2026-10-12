@@ -3,285 +3,160 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>103 Ways to Die - Level 1</title>
+<title>103 Ways to Die - Level 1 (V2)</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#0a0e17; font-family:'Segoe UI', system-ui, sans-serif; overflow:hidden; touch-action:none; }
-  #game { display:block; width:100vw; height:100vh; }
-  .hud { position:fixed; top:0; left:0; right:0; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; z-index:10; pointer-events:none; }
-  .hud span { color:#fff; font-weight:700; font-size:14px; text-shadow:0 2px 8px rgba(0,0,0,.5); }
-  .controls { position:fixed; bottom:20px; left:0; right:0; display:flex; justify-content:space-between; padding:0 20px; z-index:10; }
-  .btn { width:70px; height:70px; border-radius:50%; border:2px solid rgba(255,255,255,.3); background:rgba(255,255,255,.1); backdrop-filter:blur(10px); color:#fff; font-size:24px; display:flex; align-items:center; justify-content:center; user-select:none; -webkit-user-select:none; }
-  .btn:active { background:rgba(255,255,255,.25); transform:scale(.95); }
-  .btn.jump { width:90px; height:90px; background:rgba(255,45,85,.25); border-color:rgba(255,45,85,.5); font-size:16px; font-weight:800; }
-  .btn.jump:active { background:rgba(255,45,85,.45); }
-  #msg { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:20px; font-weight:800; text-align:center; z-index:20; pointer-events:none; opacity:0; transition:opacity .3s; text-shadow:0 2px 12px rgba(0,0,0,.7); }
+  body { background:#1a1a2e; font-family:'Courier New', monospace; overflow:hidden; touch-action:none; }
+  #game { display:block; width:100vw; height:100vh; image-rendering:pixelated; }
+  .hud { position:fixed; top:0; left:0; right:0; padding:10px 14px; display:flex; justify-content:space-between; z-index:10; pointer-events:none; }
+  .hud span { color:#fff; font-weight:bold; font-size:13px; font-family:'Courier New',monospace; }
+  .controls { position:fixed; bottom:16px; left:0; right:0; display:flex; justify-content:space-between; padding:0 16px; z-index:10; }
+  .btn { width:60px; height:60px; border-radius:8px; border:3px solid #fff; background:rgba(255,255,255,.15); color:#fff; font-size:20px; display:flex; align-items:center; justify-content:center; user-select:none; font-family:'Courier New',monospace; font-weight:bold; }
+  .btn:active { background:rgba(255,255,255,.35); }
+  .btn.jump { width:76px; height:76px; background:rgba(255,80,80,.25); border-color:#ff5050; font-size:13px; }
+  #msg { position:fixed; top:40%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:18px; font-weight:bold; text-align:center; z-index:20; pointer-events:none; opacity:0; transition:opacity .3s; font-family:'Courier New',monospace; }
+  #musicBtn { position:fixed; top:10px; right:14px; z-index:11; width:36px; height:36px; border-radius:8px; border:2px solid #fff; background:rgba(255,255,255,.15); color:#fff; font-size:16px; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div class="hud">
-  <span id="level">LEVEL 001</span>
-  <span id="deaths">💀 0</span>
-</div>
+<div class="hud"><span>LV 001</span><span id="deaths">💀0</span></div>
+<button id="musicBtn">♪</button>
 <div class="controls">
-  <div style="display:flex;gap:12px">
-    <div class="btn" id="left">◀</div>
-    <div class="btn" id="right">▶</div>
-  </div>
+  <div style="display:flex;gap:10px"><div class="btn" id="left">◀</div><div class="btn" id="right">▶</div></div>
   <div class="btn jump" id="jump">JUMP</div>
 </div>
 <div id="msg"></div>
 <script>
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-let W, H, SCALE;
-function resize() {
-  W = window.innerWidth; H = window.innerHeight;
-  canvas.width = W; canvas.height = H;
-  SCALE = Math.min(W/960, H/540);
-}
-window.addEventListener('resize', resize); resize();
+// ===== 103 Ways to Die V2 - Level 1 =====
+// Minimalist pixel style (Level Devil inspired), clean & readable
+const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+let W,H,S;
+function resize(){ W=innerWidth; H=innerHeight; canvas.width=W; canvas.height=H; S=Math.min(W/480,H/270); }
+addEventListener('resize',resize); resize();
+ctx.imageSmoothingEnabled = false;
 
-// Game state
-const player = { x:60, y:0, w:28, h:40, vx:0, vy:0, onGround:false, face:1 };
-let deaths = 0;
-let camera = 0;
-
-// Level 1: Tutorial - flat ground, small gaps, NO traps
-// Professional look: gradient platforms, subtle details
-const platforms = [
-  {x:0, y:460, w:300, h:80},
-  {x:340, y:460, w:200, h:80},  // 40px gap - easy jump
-  {x:580, y:430, w:200, h:110}, // slightly higher
-  {x:820, y:460, w:300, h:80},  // 40px gap
-  {x:1160, y:460, w:400, h:80}, // 40px gap, goal here
-];
-const goal = {x:1480, y:370, w:40, h:90};
-const LEVEL_W = 1600;
-
-// Input
-const keys = {left:false, right:false};
-function bind(id, key) {
-  const el = document.getElementById(id);
-  el.addEventListener('pointerdown', e => { e.preventDefault(); keys[key]=true; });
-  el.addEventListener('pointerup', () => keys[key]=false);
-  el.addEventListener('pointerleave', () => keys[key]=false);
-  el.addEventListener('pointercancel', () => keys[key]=false);
-}
-bind('left','left'); bind('right','right');
-document.getElementById('jump').addEventListener('pointerdown', e => {
-  e.preventDefault();
-  if (player.onGround) { player.vy = -13; player.onGround = false; }
-});
-// Keyboard
-window.addEventListener('keydown', e => {
-  if(e.key==='ArrowLeft') keys.left=true;
-  if(e.key==='ArrowRight') keys.right=true;
-  if((e.key===' '||e.key==='ArrowUp') && player.onGround) { player.vy=-13; player.onGround=false; }
-});
-window.addEventListener('keyup', e => {
-  if(e.key==='ArrowLeft') keys.left=false;
-  if(e.key==='ArrowRight') keys.right=false;
-});
-
-function showMsg(t, ms=1500) {
-  const m = document.getElementById('msg');
-  m.textContent = t; m.style.opacity = 1;
-  setTimeout(()=> m.style.opacity=0, ms);
-}
-
-function reset() {
-  player.x = 60; player.y = 300; player.vx = 0; player.vy = 0;
-  camera = 0;
-}
-
-function update() {
-  // Physics
-  const SPEED = 4.2, GRAV = 0.7;
-  if (keys.left) { player.vx = -SPEED; player.face = -1; }
-  else if (keys.right) { player.vx = SPEED; player.face = 1; }
-  else player.vx *= 0.8;
-  
-  player.vy += GRAV;
-  if (player.vy > 15) player.vy = 15;
-  
-  player.x += player.vx;
-  player.y += player.vy;
-  player.onGround = false;
-  
-  // Platform collision
-  for (const p of platforms) {
-    if (player.x < p.x+p.w && player.x+player.w > p.x &&
-        player.y < p.y+p.h && player.y+player.h > p.y) {
-      // Land on top
-      if (player.vy > 0 && player.y+player.h-player.vy <= p.y+10) {
-        player.y = p.y - player.h;
-        player.vy = 0;
-        player.onGround = true;
+// Music: simple chiptune loop
+let AC=null, musicOn=true, mStep=0, mTimer=null;
+const MEL=[0,-1,4,-1,7,-1,4,-1, 5,-1,9,-1,7,-1,4,-1];
+function nf(s){return 220*Math.pow(2,s/12);}
+function startMusic(){
+  if(AC||!musicOn) return;
+  try{
+    AC=new (AudioContext||webkitAudioContext)();
+    const play=()=>{
+      if(!musicOn||!AC) return;
+      const t=AC.currentTime, n=MEL[mStep%MEL.length];
+      if(n>=0){
+        const o=AC.createOscillator(),g=AC.createGain();
+        o.type='square'; o.frequency.value=nf(n);
+        g.gain.setValueAtTime(.04,t); g.gain.exponentialRampToValueAtTime(.001,t+.2);
+        o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+.22);
       }
+      mStep++;
+    };
+    play(); mTimer=setInterval(play,210);
+  }catch(e){}
+}
+function stopMusic(){ if(mTimer)clearInterval(mTimer); mTimer=null; if(AC){AC.close().catch(()=>{}); AC=null;} }
+document.getElementById('musicBtn').onclick=e=>{e.stopPropagation();musicOn=!musicOn;document.getElementById('musicBtn').textContent=musicOn?'♪':'✕';document.getElementById('musicBtn').style.opacity=musicOn?1:.4;musicOn?startMusic():stopMusic();};
+addEventListener('pointerdown',()=>{if(musicOn)startMusic();},{once:false});
+
+// Player: simple pixel character (clear & readable)
+const P={x:30,y:0,w:14,h:20,vx:0,vy:0,ground:false,face:1};
+let deaths=0, cam=0;
+
+// Level 1: "First Steps" - teach move & jump. Goal UP HIGH (not just right!)
+const PLATS=[
+  {x:0,y:220,w:120,h:50},
+  {x:140,y:220,w:80,h:50},   // small gap
+  {x:240,y:190,w:80,h:80},   // step up
+  {x:340,y:160,w:80,h:110},  // higher
+  // GOAL is UP on a high platform - not just to the right!
+];
+const GOAL={x:355,y:110,w:24,h:50}; // floating above last platform
+const LW=480;
+
+const K={l:0,r:0};
+const b=(id,k)=>{const e=document.getElementById(id);e.addEventListener('pointerdown',e=>{e.preventDefault();K[k]=1;});['pointerup','pointerleave','pointercancel'].forEach(ev=>e.addEventListener(ev,()=>K[k]=0));};
+b('left','l'); b('right','r');
+document.getElementById('jump').addEventListener('pointerdown',e=>{e.preventDefault();if(P.ground){P.vy=-8.5;P.ground=false;}});
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft')K.l=1;if(e.key==='ArrowRight')K.r=1;if(e.key===' '&&P.ground){P.vy=-8.5;P.ground=false;}});
+addEventListener('keyup',e=>{if(e.key==='ArrowLeft')K.l=0;if(e.key==='ArrowRight')K.r=0;});
+
+function msg(t,ms=1400){const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;setTimeout(()=>m.style.opacity=0,ms);}
+function reset(){P.x=30;P.y=150;P.vx=0;P.vy=0;cam=0;}
+
+function upd(){
+  const SP=2.6;
+  if(K.l){P.vx=-SP;P.face=-1;}else if(K.r){P.vx=SP;P.face=1;}else P.vx*=0.7;
+  P.vy+=0.45; if(P.vy>10)P.vy=10;
+  P.x+=P.vx; P.y+=P.vy; P.ground=false;
+  for(const p of PLATS){
+    if(P.x<p.x+p.w&&P.x+P.w>p.x&&P.y<p.y+p.h&&P.y+P.h>p.y){
+      if(P.vy>0&&P.y+P.h-P.vy<=p.y+8){P.y=p.y-P.h;P.vy=0;P.ground=true;}
+      else if(P.vy<0&&P.y-P.vy>=p.y+p.h-8){P.y=p.y+p.h;P.vy=0;}
+      else if(P.vx>0){P.x=p.x-P.w;}else if(P.vx<0){P.x=p.x+p.w;}
     }
   }
-  
-  // Fall death
-  if (player.y > 700) {
-    deaths++;
-    document.getElementById('deaths').textContent = '💀 '+deaths;
-    showMsg('Oops! Try again');
-    reset();
+  if(P.x<0)P.x=0;
+  if(P.y>300){deaths++;document.getElementById('deaths').textContent='💀'+deaths;msg('Try again!');reset();}
+  if(P.x<GOAL.x+GOAL.w&&P.x+P.w>GOAL.x&&P.y<GOAL.y+GOAL.h&&P.y+P.h>GOAL.y){
+    msg('🎉 Level Clear!',2000); P.x=-100;
+    setTimeout(()=>msg('Level 2 soon...'),2200);
   }
-  
-  // Goal
-  if (player.x < goal.x+goal.w && player.x+player.w > goal.x &&
-      player.y < goal.y+goal.h && player.y+player.h > goal.y) {
-    showMsg('🎉 Level Complete!', 2000);
-    setTimeout(()=>{ showMsg('Level 2 coming soon...'); }, 2200);
-    player.x = 60; // prevent re-trigger
-  }
-  
-  // Camera
-  camera = Math.max(0, Math.min(player.x - 300, LEVEL_W - 960));
-  if (LEVEL_W < 960) camera = 0;
+  cam=Math.max(0,Math.min(P.x-180,LW-480));
 }
 
-function draw() {
+function draw(){
   ctx.clearRect(0,0,W,H);
   ctx.save();
-  // Center the 960-wide game area
-  const ox = (W - 960*SCALE)/2, oy = (H - 540*SCALE)/2;
-  ctx.translate(ox, oy);
-  ctx.scale(SCALE, SCALE);
-  ctx.translate(-camera, 0);
+  const ox=(W-480*S)/2, oy=(H-270*S)/2;
+  ctx.translate(ox,oy); ctx.scale(S,S); ctx.translate(-Math.round(cam),0);
   
-  // Background: gradient sky
-  const bg = ctx.createLinearGradient(0,0,0,540);
-  bg.addColorStop(0,'#0d1b2e'); bg.addColorStop(.6,'#12263f'); bg.addColorStop(1,'#0a0e17');
-  ctx.fillStyle = bg;
-  ctx.fillRect(camera,0,960,540);
+  // BG: dark with subtle grid
+  ctx.fillStyle='#1a1a2e'; ctx.fillRect(cam,0,480,270);
+  ctx.fillStyle='rgba(255,255,255,.03)';
+  for(let gx=0;gx<480;gx+=24)ctx.fillRect(cam+gx,0,1,270);
+  for(let gy=0;gy<270;gy+=24)ctx.fillRect(cam,gy,480,1);
   
-  // Stars
-  ctx.fillStyle = 'rgba(255,255,255,.4)';
-  for(let i=0;i<30;i++){
-    const sx = (i*173)%960 + camera*0.1 % 960;
-    const sy = (i*97)%300;
-    ctx.fillRect(sx, sy, 2, 2);
+  // Platforms: clean pixel blocks
+  for(const p of PLATS){
+    ctx.fillStyle='#2d2d44'; ctx.fillRect(p.x,p.y,p.w,p.h);
+    ctx.fillStyle='#4a4a6a'; ctx.fillRect(p.x,p.y,p.w,4); // top highlight
+    ctx.fillStyle='#1a1a2e';
+    for(let dx=8;dx<p.w-4;dx+=16)ctx.fillRect(p.x+dx,p.y+12,8,3);
   }
   
-  // Distant mountains (parallax)
-  ctx.fillStyle = 'rgba(20,40,70,.5)';
-  ctx.beginPath();
-  for(let x=-100;x<1200;x+=200){
-    const mx = x - camera*0.3 % 200;
-    ctx.moveTo(mx, 460); ctx.lineTo(mx+100, 280); ctx.lineTo(mx+200, 460);
-  }
-  ctx.fill();
+  // Goal: glowing door UP HIGH
+  ctx.fillStyle='#d9ff4f'; ctx.fillRect(GOAL.x,GOAL.y,GOAL.w,GOAL.h);
+  ctx.fillStyle='#1a1a2e'; ctx.fillRect(GOAL.x+4,GOAL.y+4,GOAL.w-8,GOAL.h-8);
+  ctx.fillStyle='#d9ff4f'; ctx.fillRect(GOAL.x+8,GOAL.y+10,GOAL.w-16,GOAL.h-20);
+  // Arrow pointing up to goal
+  ctx.fillStyle='#fff'; ctx.font='bold 10px monospace';
+  ctx.fillText('▲ GOAL',GOAL.x-8,GOAL.y-8);
   
-  // Platforms: professional look with gradient and edge highlight
-  for (const p of platforms) {
-    // Main body
-    const g = ctx.createLinearGradient(0,p.y,0,p.y+p.h);
-    g.addColorStop(0,'#2a3f5f'); g.addColorStop(.15,'#1c2c47'); g.addColorStop(1,'#0e1626');
-    ctx.fillStyle = g;
-    ctx.fillRect(p.x, p.y, p.w, p.h);
-    // Top edge highlight (grass/metal look)
-    ctx.fillStyle = '#4ade80';
-    ctx.fillRect(p.x, p.y, p.w, 6);
-    ctx.fillStyle = 'rgba(255,255,255,.25)';
-    ctx.fillRect(p.x, p.y+6, p.w, 2);
-    // Subtle texture
-    ctx.fillStyle = 'rgba(255,255,255,.05)';
-    for(let tx=p.x+15; tx<p.x+p.w-10; tx+=40) {
-      ctx.fillRect(tx, p.y+20, 20, 3);
-    }
-  }
-  
-  // Goal: glowing door
-  const gg = ctx.createLinearGradient(goal.x,0,goal.x+goal.w,0);
-  gg.addColorStop(0,'#d9ff4f'); gg.addColorStop(1,'#a8d93a');
-  ctx.fillStyle = gg;
-  ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
-  ctx.fillStyle = 'rgba(255,255,255,.4)';
-  ctx.fillRect(goal.x+5, goal.y+5, goal.w-10, goal.h-10);
-  ctx.fillStyle = '#0a0e17';
-  ctx.font = 'bold 12px sans-serif';
-  ctx.fillText('EXIT', goal.x+8, goal.y+50);
-  // Glow
-  ctx.shadowColor = '#d9ff4f'; ctx.shadowBlur = 20;
-  ctx.strokeStyle = '#d9ff4f'; ctx.lineWidth = 2;
-  ctx.strokeRect(goal.x, goal.y, goal.w, goal.h);
-  ctx.shadowBlur = 0;
-  
-  // Player: professional robot character
-  const px = player.x, py = player.y;
-  ctx.save();
-  ctx.translate(px+player.w/2, py);
-  if (player.face < 0) ctx.scale(-1,1);
-  
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,.3)';
-  ctx.beginPath(); ctx.ellipse(0, player.h, 14, 5, 0, 0, 7); ctx.fill();
-  
-  // Legs (animated when moving)
-  const legSwing = Math.abs(player.vx) > 0.5 ? Math.sin(Date.now()*0.02)*4 : 0;
-  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-6, 28); ctx.lineTo(-6+legSwing, 40);
-  ctx.moveTo(6, 28); ctx.lineTo(6-legSwing, 40);
-  ctx.stroke();
-  
-  // Body: gradient with metallic look
-  const bg2 = ctx.createLinearGradient(-12,0,12,30);
-  bg2.addColorStop(0,'#60a5fa'); bg2.addColorStop(.5,'#3b82f6'); bg2.addColorStop(1,'#1d4ed8');
-  ctx.fillStyle = bg2;
-  ctx.beginPath(); ctx.roundRect(-12, 2, 24, 28, 8); ctx.fill();
-  ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
-  
-  // Chest light
-  ctx.fillStyle = '#d9ff4f'; ctx.shadowColor = '#d9ff4f'; ctx.shadowBlur = 8;
-  ctx.beginPath(); ctx.arc(0, 14, 4, 0, 7); ctx.fill();
-  ctx.shadowBlur = 0;
-  
-  // Head
-  const hg = ctx.createLinearGradient(-10,-14,10,2);
-  hg.addColorStop(0,'#93c5fd'); hg.addColorStop(1,'#3b82f6');
-  ctx.fillStyle = hg;
-  ctx.beginPath(); ctx.roundRect(-10, -14, 20, 18, 6); ctx.fill();
-  ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
-  
-  // Eyes (visor)
-  ctx.fillStyle = '#0f172a';
-  ctx.beginPath(); ctx.roundRect(-7, -10, 14, 8, 3); ctx.fill();
-  ctx.fillStyle = '#4ade80'; ctx.shadowColor = '#4ade80'; ctx.shadowBlur = 6;
-  ctx.fillRect(-5, -8, 4, 4); ctx.fillRect(2, -8, 4, 4);
-  ctx.shadowBlur = 0;
-  
-  // Antenna
-  ctx.strokeStyle = '#64748b'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0,-14); ctx.lineTo(0,-20); ctx.stroke();
-  ctx.fillStyle = '#ef4444'; ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 6;
-  ctx.beginPath(); ctx.arc(0,-22,3,0,7); ctx.fill();
-  ctx.shadowBlur = 0;
-  
-  // Arms
-  const armSwing = Math.abs(player.vx) > 0.5 ? Math.sin(Date.now()*0.02)*3 : 0;
-  ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-12, 10); ctx.lineTo(-16-armSwing, 20);
-  ctx.moveTo(12, 10); ctx.lineTo(16+armSwing, 20);
-  ctx.stroke();
-  
+  // Player: SIMPLE pixel character (clear!)
+  const px=Math.round(P.x), py=Math.round(P.y);
+  ctx.save(); ctx.translate(px+P.w/2,py); if(P.face<0)ctx.scale(-1,1);
+  // Body: 14x20 simple robot
+  ctx.fillStyle='#3b82f6'; ctx.fillRect(-7,4,14,12); // torso
+  ctx.fillStyle='#1d4ed8'; ctx.fillRect(-7,12,14,4); // lower
+  ctx.fillStyle='#93c5fd'; ctx.fillRect(-6,-2,12,8); // head
+  ctx.fillStyle='#0f172a'; ctx.fillRect(-5,0,10,4); // visor
+  ctx.fillStyle='#4ade80'; ctx.fillRect(-3,1,3,2); ctx.fillRect(2,1,3,2); // eyes
+  // Legs
+  const sw=Math.abs(P.vx)>0.3?Math.sin(Date.now()*0.015)*2:0;
+  ctx.fillStyle='#1e3a5f'; ctx.fillRect(-5,16,4,4+sw); ctx.fillRect(1,16,4,4-sw);
+  // Arm
+  ctx.fillStyle='#3b82f6'; ctx.fillRect(5,6,3,8);
   ctx.restore();
+  
   ctx.restore();
 }
 
-function loop() {
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-reset();
-showMsg('Run with ▶, Jump with JUMP!', 2500);
-loop();
+reset(); msg('Reach the ▲ GOAL up high!',2200);
+(function loop(){upd();draw();requestAnimationFrame(loop);})();
 </script>
 </body>
 </html>
