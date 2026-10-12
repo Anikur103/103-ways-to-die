@@ -175,20 +175,24 @@ function draw(){
   }
 
   // GOAL: mysterious dark portal — NO label, NO hint (deception is the game)
-  // doorClose: 0=open, 1=shut (closes behind player)
+  // doorClose: 0=open, 1=shut & blended into background (vanishes)
   const gl=0.6+0.4*Math.sin(Date.now()*0.006);
   const dc=doorClose;
   const gcx=GOAL.x+GOAL.w/2, gw2=(GOAL.w/2)*(1-dc);
-  // subtle outer glow (barely visible)
-  if(dc<1){cx.fillStyle='rgba(120,80,220,'+(0.12*gl*(1-dc))+')';cx.fillRect(GOAL.x-8,GOAL.y-8,GOAL.w+16,GOAL.h+16);}
-  // dark void (shrinks as door closes)
-  cx.fillStyle='#05060a';cx.fillRect(gcx-gw2,GOAL.y,gw2*2,GOAL.h);
-  // faint purple inner shimmer
-  if(dc<1){cx.fillStyle='rgba(150,100,255,'+((0.25+0.2*gl)*(1-dc))+')';
-  cx.fillRect(gcx-2*(1-dc),GOAL.y+6,4*(1-dc),GOAL.h-12);}
-  // thin frame (frame stays, void closes)
-  cx.fillStyle='#2a2438';cx.fillRect(GOAL.x,GOAL.y,GOAL.w,2);cx.fillRect(GOAL.x,GOAL.y+GOAL.h-2,GOAL.w,2);
-  cx.fillRect(GOAL.x,GOAL.y,2,GOAL.h);cx.fillRect(GOAL.x+GOAL.w-2,GOAL.y,2,GOAL.h);
+  if(dc<1){
+    // subtle outer glow (barely visible)
+    cx.fillStyle='rgba(120,80,220,'+(0.12*gl*(1-dc))+')';cx.fillRect(GOAL.x-8,GOAL.y-8,GOAL.w+16,GOAL.h+16);
+    // dark void (shrinks as door closes)
+    cx.fillStyle='#05060a';cx.fillRect(gcx-gw2,GOAL.y,gw2*2,GOAL.h);
+    // faint purple inner shimmer
+    cx.fillStyle='rgba(150,100,255,'+((0.25+0.2*gl)*(1-dc))+')';
+    cx.fillRect(gcx-2*(1-dc),GOAL.y+6,4*(1-dc),GOAL.h-12);
+    // thin frame (fades as it blends into background)
+    cx.fillStyle='rgba(42,36,56,'+(1-dc)+')';
+    cx.fillRect(GOAL.x,GOAL.y,GOAL.w,2);cx.fillRect(GOAL.x,GOAL.y+GOAL.h-2,GOAL.w,2);
+    cx.fillRect(GOAL.x,GOAL.y,2,GOAL.h);cx.fillRect(GOAL.x+GOAL.w-2,GOAL.y,2,GOAL.h);
+  }
+  // dc>=1: nothing drawn — portal fully blended into background
 
   // Player: WISP — small cyan pixel spirit (simple, readable)
   // during win: shrink into the portal
