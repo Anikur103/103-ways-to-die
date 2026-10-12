@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://anikur103.github.io/103-ways-to-die/sitemap.xml
