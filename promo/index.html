@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>103 Ways to Die — The Brutally Hard Troll Platformer</title>
 <meta name="description" content="103 Ways to Die is a super-hard troll platformer. 103 brutal levels, hidden traps, zero mercy. Play free in your browser or install the app.">
+<meta name="theme-color" content="#08101d">
+<link rel="manifest" href="../manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800;900&display=swap" rel="stylesheet">
@@ -175,6 +178,10 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// register service worker (makes the page installable as an app)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
 // floating spikes
 (function(){
   const fx=document.getElementById('bgfx');
