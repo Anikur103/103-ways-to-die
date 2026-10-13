@@ -77,6 +77,14 @@ canvas{display:block;border-radius:4px}
 .lv.locked{opacity:.28;cursor:default}
 .lv:not(.locked):hover{transform:scale(1.14)}
 #menuhint{font-size:12px;margin-top:14px;letter-spacing:1px;opacity:.7}
+@media (max-height:560px){
+  #menu{padding:10px 12px}
+  #title{font-size:32px;letter-spacing:5px;margin-top:0}
+  #subtitle{font-size:11px;letter-spacing:3px;margin:2px 0 8px}
+  #playbtn{font-size:18px;padding:10px 46px;margin-bottom:8px}
+  #grid{grid-template-columns:repeat(10,34px);gap:5px}
+  .lv{width:34px;height:34px;font-size:11px}
+}
 #flash{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;
   color:var(--btn);font-size:40px;font-weight:bold;letter-spacing:10px;opacity:0;z-index:5}
 </style>
