@@ -53,12 +53,12 @@ canvas{display:block;border-radius:4px}
 #deaths{font-size:13px;font-weight:bold;color:var(--ink);background:rgba(0,0,0,.12);
   padding:8px 12px;border-radius:10px}
 #touch{position:absolute;left:0;right:0;bottom:0;display:none;justify-content:space-between;
-  padding:0 16px 16px;pointer-events:none;z-index:4}
+  padding:0 20px 20px;pointer-events:none;z-index:4}
 #touch.on{display:flex}
-.tbtn{pointer-events:auto;width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,.10);
-  border:2px solid var(--btn);color:var(--btn);font-size:20px;font-weight:bold;opacity:.75
-  display:flex;align-items:center;justify-content:center;font-family:inherit}
-.tbtn:active{background:var(--btn);color:var(--btntx)}
+.tbtn{pointer-events:auto;width:50px;height:50px;border-radius:50%;background:rgba(0,0,0,.08);
+  border:2px solid var(--btn);color:var(--btn);font-size:18px;font-weight:bold;opacity:.5;
+  display:flex;align-items:center;justify-content:center;font-family:inherit;touch-action:none}
+.tbtn:active{background:var(--btn);color:var(--btntx);opacity:.9}
 #tzone{display:flex;gap:12px}
 #menu{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;
   color:var(--ink);z-index:10;overflow-y:auto;padding:24px 12px;border-radius:4px}
@@ -2345,9 +2345,9 @@ addEventListener('orientationchange',()=>setTimeout(fit,300));
 
 /* auto-landscape: as soon as the game starts, lock to landscape (Android Chrome).
    Needs a user gesture, so we fire it on PLAY tap. Falls back to rotate prompt. */
-let landTried=false;
+document.addEventListener('fullscreenchange',()=>{ setTimeout(fit,300); });
+/* safe to call on every tap: no-ops when already fullscreen+locked */
 async function lockLandscape(){
-  if(landTried) return; landTried=true;
   try{
     const el=document.documentElement;
     if(el.requestFullscreen && !document.fullscreenElement){
@@ -2416,7 +2416,7 @@ function showMenu(){
   for(let i=0;i<LEVELS.length;i++){
     const b=document.createElement('button');
     b.textContent=i+1; b.className='lv'+(i<save.unlocked?' done':i===save.unlocked?' cur':' locked');
-    if(i<=save.unlocked) b.onclick=()=>{ AU.init(); startLevel(i); };
+    if(i<=save.unlocked) b.onclick=()=>{ AU.init(); lockLandscape(); startLevel(i); };
     gr.appendChild(b);
   }
 }
