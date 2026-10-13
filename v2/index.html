@@ -36,7 +36,9 @@ body.w10{ --bg:#4a1c12; --plat:#e8a55e; --ink:#f5e6c8; --char:#0e0805; --door:#f
 html,body{height:100%;background:#1c100a;overflow:hidden;font-family:'Courier New',monospace;
   user-select:none;-webkit-user-select:none;touch-action:none}
 #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg)}
-#stage{position:relative}
+#stage{position:relative;width:min(100vw,calc(100vh*960/560));width:min(100vw,calc(100dvh*960/560));
+  aspect-ratio:960/560;max-width:100vw;max-height:100vh;max-height:100dvh}
+#stage canvas{width:100%!important;height:100%!important}
 canvas{display:block;border-radius:4px}
 #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
   padding:10px 12px;pointer-events:none;z-index:4}
@@ -2333,13 +2335,10 @@ const DT=1/60;
 const menuEl=document.getElementById('menu');
 const menuOpen=()=>!menuEl.classList.contains('hidden');
 
+/* canvas sizing is pure CSS now (#stage aspect-ratio); fit() only toggles rotate prompt */
 function fit(){
-  const ww=innerWidth, wh=innerHeight, a=VW/VH;
-  let w=ww, h=ww/a; if(h>wh){ h=wh; w=wh*a; }
-  cv.style.width=w+'px'; cv.style.height=h+'px';
-  /* portrait fallback prompt: show only if landscape lock didn't take */
   const rp=document.getElementById('rotateprompt');
-  if(rp) rp.style.display=(wh>ww && !menuOpen())?'flex':'none';
+  if(rp) rp.style.display=(innerHeight>innerWidth && !menuOpen())?'flex':'none';
 }
 addEventListener('resize',fit); fit();
 addEventListener('orientationchange',()=>setTimeout(fit,300));
