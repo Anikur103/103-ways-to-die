@@ -35,9 +35,9 @@ body.w10{ --bg:#4a1c12; --plat:#e8a55e; --ink:#f5e6c8; --char:#0e0805; --door:#f
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#1c100a;overflow:hidden;font-family:'Courier New',monospace;
   user-select:none;-webkit-user-select:none;touch-action:none}
-#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg)}
-#stage{position:relative;width:min(100vw,calc(100vh*960/560));width:min(100vw,calc(100dvh*960/560));
-  aspect-ratio:960/560;max-width:100vw;max-height:100vh;max-height:100dvh}
+#wrap{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg)}
+#stage{position:relative;width:min(100vw,calc((100vh - 96px)*960/560));width:min(100vw,calc((100dvh - 96px)*960/560));
+  aspect-ratio:960/560;max-width:100vw}
 #stage canvas{width:100%!important;height:100%!important}
 canvas{display:block;border-radius:4px}
 #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
@@ -52,13 +52,13 @@ canvas{display:block;border-radius:4px}
 #plabel{font-size:11px;font-weight:bold;color:var(--ink);margin-left:4px;letter-spacing:1px}
 #deaths{font-size:13px;font-weight:bold;color:var(--ink);background:rgba(0,0,0,.12);
   padding:8px 12px;border-radius:10px}
-#touch{position:absolute;left:0;right:0;bottom:0;display:none;justify-content:space-between;
-  padding:0 20px 20px;pointer-events:none;z-index:4}
+#touch{display:none;width:min(100vw,calc((100vh - 96px)*960/560));width:min(100vw,calc((100dvh - 96px)*960/560));
+  height:96px;flex:none;justify-content:space-between;align-items:center;padding:0 12px;pointer-events:none}
 #touch.on{display:flex}
-.tbtn{pointer-events:auto;width:50px;height:50px;border-radius:50%;background:rgba(0,0,0,.08);
-  border:2px solid var(--btn);color:var(--btn);font-size:18px;font-weight:bold;opacity:.5;
+.tbtn{pointer-events:auto;width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,.10);
+  border:2px solid var(--btn);color:var(--btn);font-size:20px;font-weight:bold;opacity:.8;
   display:flex;align-items:center;justify-content:center;font-family:inherit;touch-action:none}
-.tbtn:active{background:var(--btn);color:var(--btntx);opacity:.9}
+.tbtn:active{background:var(--btn);color:var(--btntx);opacity:1}
 #tzone{display:flex;gap:12px}
 #menu{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;
   color:var(--ink);z-index:10;overflow-y:auto;padding:24px 12px;border-radius:4px}
@@ -108,10 +108,6 @@ canvas{display:block;border-radius:4px}
     </div>
     <div id="flash"></div>
     <div id="rotateprompt" style="display:none">⟳<span>ROTATE YOUR PHONE</span></div>
-    <div id="touch">
-      <div id="tzone"><div class="tbtn" id="tleft">&#9664;</div><div class="tbtn" id="tright">&#9654;</div></div>
-      <div class="tbtn" id="tjump">&#9650;</div>
-    </div>
     <div id="menu" class="hidden">
       <div id="title">TRAP DEVIL</div>
       <div id="subtitle">103 LEVELS &middot; TRUST NOTHING</div>
@@ -124,6 +120,10 @@ canvas{display:block;border-radius:4px}
       <div id="grid"></div>
       <div id="menuhint">ARROWS / WASD MOVE &middot; SPACE JUMP &middot; R RETRY</div>
     </div>
+  </div>
+  <div id="touch">
+    <div id="tzone"><div class="tbtn" id="tleft">&#9664;</div><div class="tbtn" id="tright">&#9654;</div></div>
+    <div class="tbtn" id="tjump">&#9650;</div>
   </div>
 </div>
 <script>
