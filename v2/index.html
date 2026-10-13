@@ -87,6 +87,9 @@ canvas{display:block;border-radius:4px}
 }
 #flash{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;
   color:var(--btn);font-size:40px;font-weight:bold;letter-spacing:10px;opacity:0;z-index:5}
+#rotateprompt{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;background:rgba(20,8,4,.88);color:#fff;font-size:52px;z-index:9;text-align:center;pointer-events:none}
+#rotateprompt span{font-size:20px;letter-spacing:4px;font-weight:bold}
 </style>
 </head>
 <body class="w0">
@@ -102,6 +105,7 @@ canvas{display:block;border-radius:4px}
       <div id="deaths">&#9760; 0</div>
     </div>
     <div id="flash"></div>
+    <div id="rotateprompt" style="display:none">⟳<span>ROTATE YOUR PHONE</span></div>
     <div id="touch">
       <div id="tzone"><div class="tbtn" id="tleft">&#9664;</div><div class="tbtn" id="tright">&#9654;</div></div>
       <div class="tbtn" id="tjump">&#9650;</div>
@@ -2333,8 +2337,31 @@ function fit(){
   const ww=innerWidth, wh=innerHeight, a=VW/VH;
   let w=ww, h=ww/a; if(h>wh){ h=wh; w=wh*a; }
   cv.style.width=w+'px'; cv.style.height=h+'px';
+  /* portrait fallback prompt: show only if landscape lock didn't take */
+  const rp=document.getElementById('rotateprompt');
+  if(rp) rp.style.display=(wh>ww && !menuOpen())?'flex':'none';
 }
 addEventListener('resize',fit); fit();
+addEventListener('orientationchange',()=>setTimeout(fit,300));
+
+/* auto-landscape: as soon as the game starts, lock to landscape (Android Chrome).
+   Needs a user gesture, so we fire it on PLAY tap. Falls back to rotate prompt. */
+let landTried=false;
+async function lockLandscape(){
+  if(landTried) return; landTried=true;
+  try{
+    const el=document.documentElement;
+    if(el.requestFullscreen && !document.fullscreenElement){
+      try{ await el.requestFullscreen(); }catch(e){}
+    }
+  }catch(e){}
+  try{
+    if(screen.orientation && screen.orientation.lock){
+      try{ await screen.orientation.lock('landscape'); }catch(e){}
+    }
+  }catch(e){}
+  setTimeout(fit,400);
+}
 
 function startLevel(i){
   cur=i; applyWorld(i);
@@ -2394,7 +2421,7 @@ function showMenu(){
     gr.appendChild(b);
   }
 }
-document.getElementById('playbtn').onclick=()=>{ AU.init(); startLevel(Math.min(save.unlocked,LEVELS.length-1)); };
+document.getElementById('playbtn').onclick=()=>{ AU.init(); lockLandscape(); startLevel(Math.min(save.unlocked,LEVELS.length-1)); };
 document.getElementById('menubtn').onclick=()=>showMenu();
 document.getElementById('retrybtn').onclick=()=>retryLevel();
 document.getElementById('musicbtn').onclick=()=>AU.toggle();
