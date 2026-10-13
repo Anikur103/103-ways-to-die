@@ -249,7 +249,7 @@ document.getElementById('installBtn').addEventListener('click',async()=>{
 });
 
 // APK download (appears automatically once the APK file is uploaded)
-const APK_URL='app-v3.apk?v=3';
+const APK_URL='103-ways-to-die.apk?v=3';
 let apkReady=false;
 fetch(APK_URL,{method:'HEAD'}).then(r=>{apkReady=r.ok;}).catch(()=>{});
 document.getElementById('apkBtn').addEventListener('click',()=>{
