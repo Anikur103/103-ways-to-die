@@ -38,6 +38,8 @@ html,body{height:100%;background:#1c100a;overflow:hidden;font-family:'Courier Ne
 #wrap{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg)}
 #stage{position:relative;width:min(100vw,calc((100vh - 96px)*960/560));width:min(100vw,calc((100dvh - 96px)*960/560));
   aspect-ratio:960/560;max-width:100vw}
+/* menu open: no touch bar reserved, stage takes full height */
+body:not(.playing) #stage{width:min(100vw,calc(100vh*960/560));width:min(100vw,calc(100dvh*960/560))}
 #stage canvas{width:100%!important;height:100%!important}
 canvas{display:block;border-radius:4px}
 #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
@@ -52,9 +54,10 @@ canvas{display:block;border-radius:4px}
 #plabel{font-size:11px;font-weight:bold;color:var(--ink);margin-left:4px;letter-spacing:1px}
 #deaths{font-size:13px;font-weight:bold;color:var(--ink);background:rgba(0,0,0,.12);
   padding:8px 12px;border-radius:10px}
-#touch{display:none;width:min(100vw,calc((100vh - 96px)*960/560));width:min(100vw,calc((100dvh - 96px)*960/560));
-  height:96px;flex:none;justify-content:space-between;align-items:center;padding:0 12px;pointer-events:none}
-#touch.on{display:flex}
+#touch{display:none;width:100vw;height:96px;flex:none;justify-content:space-between;align-items:center;
+  padding:0 18px;pointer-events:none}
+/* controller only during gameplay, never on the menu */
+body.playing #touch.on{display:flex}
 .tbtn{pointer-events:auto;width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,.10);
   border:2px solid var(--btn);color:var(--btn);font-size:20px;font-weight:bold;opacity:.8;
   display:flex;align-items:center;justify-content:center;font-family:inherit;touch-action:none}
@@ -90,8 +93,9 @@ canvas{display:block;border-radius:4px}
 #flash{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;
   color:var(--btn);font-size:40px;font-weight:bold;letter-spacing:10px;opacity:0;z-index:5}
 #rotateprompt{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
-  gap:12px;background:rgba(20,8,4,.88);color:#fff;font-size:52px;z-index:9;text-align:center;pointer-events:none}
+  gap:12px;background:rgba(20,8,4,.88);color:#fff;font-size:52px;z-index:9;text-align:center;cursor:pointer;pointer-events:auto}
 #rotateprompt span{font-size:20px;letter-spacing:4px;font-weight:bold}
+#rotateprompt small{font-size:13px;letter-spacing:2px;opacity:.7}
 </style>
 </head>
 <body class="w0">
@@ -107,7 +111,7 @@ canvas{display:block;border-radius:4px}
       <div id="deaths">&#9760; 0</div>
     </div>
     <div id="flash"></div>
-    <div id="rotateprompt" style="display:none">⟳<span>ROTATE YOUR PHONE</span></div>
+    <div id="rotateprompt" style="display:none">⟳<span>ROTATE YOUR PHONE</span><small>TAP TO ROTATE</small></div>
     <div id="menu" class="hidden">
       <div id="title">TRAP DEVIL</div>
       <div id="subtitle">103 LEVELS &middot; TRUST NOTHING</div>
@@ -2344,14 +2348,20 @@ addEventListener('resize',fit); fit();
 addEventListener('orientationchange',()=>setTimeout(fit,300));
 
 /* auto-landscape: as soon as the game starts, lock to landscape (Android Chrome).
-   Needs a user gesture, so we fire it on PLAY tap. Falls back to rotate prompt. */
-document.addEventListener('fullscreenchange',()=>{ setTimeout(fit,300); });
-/* safe to call on every tap: no-ops when already fullscreen+locked */
+   Needs a user gesture, so we fire it on PLAY / level tap. Falls back to rotate prompt.
+   Request fullscreen only once per session (repeat requests re-show the browser toast),
+   but allow re-request after the user exits fullscreen via the back button. */
+let fsRequested=false;
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement) fsRequested=false;
+  setTimeout(fit,300);
+});
 async function lockLandscape(){
   try{
     const el=document.documentElement;
-    if(el.requestFullscreen && !document.fullscreenElement){
-      try{ await el.requestFullscreen(); }catch(e){}
+    if(el.requestFullscreen && !document.fullscreenElement && !fsRequested){
+      fsRequested=true;
+      try{ await el.requestFullscreen(); }catch(e){ fsRequested=false; }
     }
   }catch(e){}
   try{
@@ -2367,6 +2377,7 @@ function startLevel(i){
   S=newGameState(LEVELS[i]); deathsThis=save.deaths[i]||0;
   acc=0; lastT=performance.now();
   menuEl.classList.add('hidden');
+  document.body.classList.add('playing');
   updateHud();
   flash('LEVEL '+(i+1));
 }
@@ -2409,6 +2420,7 @@ function flash(t){
 function showMenu(){
   applyWorld(Math.min(save.unlocked,LEVELS.length-1));
   menuEl.classList.remove('hidden');
+  document.body.classList.remove('playing');
   document.getElementById('musicbtn').innerHTML=save.music?'&#9834;':'&#9835;';
   document.getElementById('menustats').textContent='DEATHS '+save.total+' · CLEARED '+save.unlocked+'/103';
   document.getElementById('pfill').style.width=(save.unlocked/LEVELS.length*100)+'%';
@@ -2422,6 +2434,7 @@ function showMenu(){
 }
 document.getElementById('playbtn').onclick=()=>{ AU.init(); lockLandscape(); startLevel(Math.min(save.unlocked,LEVELS.length-1)); };
 document.getElementById('menubtn').onclick=()=>showMenu();
+document.getElementById('rotateprompt').onclick=()=>{ lockLandscape(); };
 document.getElementById('retrybtn').onclick=()=>retryLevel();
 document.getElementById('musicbtn').onclick=()=>AU.toggle();
 
