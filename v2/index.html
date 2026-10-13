@@ -53,14 +53,18 @@ canvas{display:block;border-radius:4px}
 #touch{position:absolute;left:0;right:0;bottom:0;display:none;justify-content:space-between;
   padding:0 16px 16px;pointer-events:none;z-index:4}
 #touch.on{display:flex}
-.tbtn{pointer-events:auto;width:72px;height:72px;border-radius:50%;background:rgba(0,0,0,.18);
-  border:3px solid var(--btn);color:var(--btn);font-size:24px;font-weight:bold;
+.tbtn{pointer-events:auto;width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,.10);
+  border:2px solid var(--btn);color:var(--btn);font-size:20px;font-weight:bold;opacity:.75
   display:flex;align-items:center;justify-content:center;font-family:inherit}
 .tbtn:active{background:var(--btn);color:var(--btntx)}
 #tzone{display:flex;gap:12px}
 #menu{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;
   color:var(--ink);z-index:10;overflow-y:auto;padding:24px 12px;border-radius:4px}
 #menu.hidden{display:none}
+#rotate{position:absolute;inset:0;z-index:50;display:none;flex-direction:column;gap:12px;
+  align-items:center;justify-content:center;background:rgba(28,16,10,.92);color:#f5d9a8;
+  font-size:18px;letter-spacing:1px;text-align:center;padding:20px}
+#rotate.show{display:flex}
 #title{font-size:54px;font-weight:bold;letter-spacing:8px;color:var(--btn);margin-top:6px}
 #subtitle{letter-spacing:5px;font-size:13px;margin:4px 0 16px;color:var(--ink);opacity:.75}
 #playbtn{background:var(--btn);color:var(--btntx);border:none;border-radius:10px;font-family:inherit;
@@ -106,6 +110,7 @@ canvas{display:block;border-radius:4px}
       <div id="tzone"><div class="tbtn" id="tleft">&#9664;</div><div class="tbtn" id="tright">&#9654;</div></div>
       <div class="tbtn" id="tjump">&#9650;</div>
     </div>
+    <div id="rotate"><div style="font-size:44px">📱↻</div><div>ফোন ঘুরিয়ে ল্যান্ডস্কেপ করো</div></div>
     <div id="menu" class="hidden">
       <div id="title">TRAP DEVIL</div>
       <div id="subtitle">103 LEVELS &middot; TRUST NOTHING</div>
@@ -2318,7 +2323,12 @@ function fit(){
   let w=ww, h=ww/a; if(h>wh){ h=wh; w=wh*a; }
   cv.style.width=w+'px'; cv.style.height=h+'px';
 }
-addEventListener('resize',fit); fit();
+addEventListener('resize',()=>{fit();checkRotate();}); fit(); checkRotate();
+function checkRotate(){
+  const r=document.getElementById('rotate');
+  const portrait=innerHeight>innerWidth && /Mobi|Android|iPhone/i.test(navigator.userAgent||'');
+  r.classList.toggle('show',portrait);
+}
 
 function startLevel(i){
   cur=i; applyWorld(i);
