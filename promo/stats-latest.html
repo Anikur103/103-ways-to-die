@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>103 Ways to Die - Stats</title>
+<style>
+body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0}
+.card{background:#16213e;padding:40px;border-radius:16px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+h1{margin:0 0 10px;font-size:24px}
+.number{font-size:72px;font-weight:bold;color:#4ecca3;margin:20px 0}
+.label{color:#aaa;font-size:14px}
+a{color:#4ecca3;margin-top:20px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>📥 APK Downloads</h1>
+<div class="number" id="count">...</div>
+<div class="label" id="fname">...</div>
+<a id="rlink" href="https://github.com/Anikur103/103-ways-to-die/releases">View Releases</a>
+</div>
+<script>
+fetch('https://api.github.com/repos/Anikur103/103-ways-to-die/releases/latest')
+.then(r=>r.json())
+.then(d=>{
+  const a=d.assets.find(x=>x.name.includes('.apk'));
+  document.getElementById('count').textContent=a?a.download_count:'?';
+  if(a){document.getElementById('fname').textContent=a.name;}
+  document.getElementById('rlink').href=d.html_url;
+})
+.catch(()=>{document.getElementById('count').textContent='?';});
+</script>
+</body>
+</html>
